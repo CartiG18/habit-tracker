@@ -10,8 +10,6 @@ import React, {
 import {
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -45,18 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Handle redirect result on mobile
-    getRedirectResult(auth).then(async (result) => {
-      if (result?.user) {
-        const profile = await fetchOrCreateProfile(result.user);
-        setUserProfile(profile);
-        window.location.href = "/dashboard";
-      } else {
-        // Uncomment this to debug on mobile:
-        alert("getRedirectResult: no user returned");
-      }
-    }).catch((err) => {
-      alert("Redirect error: " + err.message);
-    });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -92,17 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return newProfile;
   }
 
-  async function signInWithGoogle() {
+  async function signInWithGoogle(): Promise<void> {
     try {
-      // Try popup first on all devices
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      // If popup blocked, fall back to redirect
-      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        throw err;
+      if (
+        err.code === "auth/popup-blocked" ||
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) {
+        return;
       }
+      throw err;
     }
   }
 

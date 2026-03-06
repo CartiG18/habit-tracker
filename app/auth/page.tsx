@@ -37,8 +37,6 @@ export default function AuthPage() {
       await signInWithGoogle();
     } catch (err: any) {
       toast.error(err.message ?? "Google sign-in failed");
-      // Show error on screen for mobile debugging
-      alert("Error: " + (err.message ?? JSON.stringify(err)));
     } finally {
       setLoading(false);
     }
