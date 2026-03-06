@@ -44,6 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result on mobile
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) {
+        const profile = await fetchOrCreateProfile(result.user);
+        setUserProfile(profile);
+        window.location.href = "/dashboard";
+      }
+    }).catch(console.error);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -90,16 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   }
 
-  async function signUpWithEmail(
-    email: string,
-    password: string,
-    name: string
-  ) {
-    const { user: newUser } = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+  async function signUpWithEmail(email: string, password: string, name: string) {
+    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(newUser, { displayName: name });
   }
 
