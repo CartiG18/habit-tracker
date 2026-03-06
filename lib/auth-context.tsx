@@ -93,10 +93,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signInWithGoogle() {
-    if (typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      await signInWithRedirect(auth, googleProvider);
-    } else {
+    try {
+      // Try popup first on all devices
       await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      // If popup blocked, fall back to redirect
+      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        throw err;
+      }
     }
   }
 
