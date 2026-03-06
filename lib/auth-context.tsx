@@ -50,8 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await fetchOrCreateProfile(result.user);
         setUserProfile(profile);
         window.location.href = "/dashboard";
+      } else {
+        // Uncomment this to debug on mobile:
+        alert("getRedirectResult: no user returned");
       }
-    }).catch(console.error);
+    }).catch((err) => {
+      alert("Redirect error: " + err.message);
+    });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
