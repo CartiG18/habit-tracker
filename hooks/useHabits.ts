@@ -1,23 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-} from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
-  getUserHabits,
   getHabitWithStats,
   toggleHabitLog,
   createHabit,
   updateHabit,
   archiveHabit,
-  deleteHabit,
-  getAllLogsForDate,
   updateHabitNote,
 } from "@/lib/habits";
 import { useAuth } from "@/lib/auth-context";
@@ -31,45 +22,31 @@ export function useHabits() {
   const [todayLogs, setTodayLogs] = useState<Map<string, HabitLog>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  // Real-time listener on habits collection
+  // Real-time habits listener
   useEffect(() => {
-    if (!user) {
-      setHabits([]);
-      setLoading(false);
-      return;
-    }
-
-    const habitsRef = collection(db, "habits");
-    const q = query(habitsRef, where("userId", "==", user.uid));
-
+    if (!user) { setHabits([]); setLoading(false); return; }
+    const q = query(collection(db, "habits"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const rawHabits = snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() } as Habit))
         .filter((h) => !h.archivedAt)
         .sort((a, b) => a.order - b.order);
-
-      // Enrich with stats (parallel)
-      const enriched = await Promise.all(
-        rawHabits.map((h) => getHabitWithStats(user.uid, h))
-      );
+      const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
       setHabits(enriched);
       setLoading(false);
     });
-
     return unsubscribe;
   }, [user]);
 
-  // Real-time listener on today's logs
+  // Real-time today's logs listener
   useEffect(() => {
     if (!user) return;
     const today = getTodayString();
-    const logsRef = collection(db, "habitLogs");
     const q = query(
-      logsRef,
+      collection(db, "habitLogs"),
       where("userId", "==", user.uid),
       where("date", "==", today)
     );
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logMap = new Map<string, HabitLog>();
       snapshot.docs.forEach((d) => {
@@ -77,8 +54,6 @@ export function useHabits() {
         logMap.set(log.habitId, log);
       });
       setTodayLogs(logMap);
-
-      // Update todayCompleted on habits
       setHabits((prev) =>
         prev.map((h) => ({
           ...h,
@@ -86,41 +61,28 @@ export function useHabits() {
         }))
       );
     });
-
     return unsubscribe;
   }, [user]);
 
-  const toggle = useCallback(
-    async (habitId: string) => {
-      if (!user) return;
-      const today = getTodayString();
-      try {
-        await toggleHabitLog(user.uid, habitId, today);
-      } catch (err) {
-        toast.error("Failed to update habit");
-        console.error(err);
-      }
-    },
-    [user]
-  );
+  const toggle = useCallback(async (habitId: string) => {
+    if (!user) return;
+    try {
+      await toggleHabitLog(user.uid, habitId, getTodayString());
+    } catch (err) {
+      toast.error("Failed to update habit");
+    }
+  }, [user]);
 
-  const addNote = useCallback(
-    async (habitId: string, note: string) => {
-      if (!user) return;
-      const today = getTodayString();
-      await updateHabitNote(user.uid, habitId, today, note);
-    },
-    [user]
-  );
+  const addNote = useCallback(async (habitId: string, note: string) => {
+    if (!user) return;
+    await updateHabitNote(user.uid, habitId, getTodayString(), note);
+  }, [user]);
 
-  const addHabit = useCallback(
-    async (data: Omit<Habit, "id" | "userId" | "createdAt" | "order">) => {
-      if (!user) return;
-      await createHabit(user.uid, data);
-      toast.success("Habit created!");
-    },
-    [user]
-  );
+  const addHabit = useCallback(async (data: Omit<Habit, "id" | "userId" | "createdAt" | "order">) => {
+    if (!user) return;
+    await createHabit(user.uid, data);
+    toast.success("Habit created!");
+  }, [user]);
 
   const editHabit = useCallback(async (habitId: string, data: Partial<Habit>) => {
     await updateHabit(habitId, data);
@@ -132,14 +94,5 @@ export function useHabits() {
     toast.success("Habit archived");
   }, []);
 
-  return {
-    habits,
-    todayLogs,
-    loading,
-    toggle,
-    addNote,
-    addHabit,
-    editHabit,
-    removeHabit,
-  };
+  return { habits, todayLogs, loading, toggle, addNote, addHabit, editHabit, removeHabit };
 }

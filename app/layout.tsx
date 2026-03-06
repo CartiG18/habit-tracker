@@ -17,13 +17,13 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Lock In – Habit Tracker",
-  description: "Build habits. Stay locked in.",
+  title: "Synapse – Habit Tracker",
+  description: "Build habits. Stay consistent.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Lock In",
+    title: "Synapse",
   },
   icons: {
     apple: "/icons/apple-touch-icon.png",

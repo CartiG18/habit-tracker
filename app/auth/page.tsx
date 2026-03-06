@@ -47,9 +47,9 @@ export default function AuthPage() {
     <div className="min-h-screen gradient-mesh flex flex-col items-center justify-center px-6">
       {/* Logo */}
       <div className="mb-10 text-center">
-        <div className="text-5xl mb-3">🔒</div>
+        <div className="text-5xl mb-3">🧠</div>
         <h1 className="font-display text-3xl font-800 text-white tracking-tight">
-          Lock In
+          Synapse
         </h1>
         <p className="text-white/40 font-body mt-1 text-sm">
           Build habits. Stay consistent.

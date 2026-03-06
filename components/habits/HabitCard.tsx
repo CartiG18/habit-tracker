@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Flame, ChevronRight } from "lucide-react";
 import { HabitWithStats } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
+import { scheduleLabel } from "@/lib/habits";
 import HabitDetailModal from "./HabitDetailModal";
 
 interface Props {
@@ -15,6 +16,10 @@ export default function HabitCard({ habit, onToggle }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [popping, setPopping] = useState(false);
   const colors = HABIT_COLORS[habit.color];
+
+  const isFrequency =
+    habit.schedule.type === "frequency_week" ||
+    habit.schedule.type === "frequency_month";
 
   function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
@@ -45,10 +50,7 @@ export default function HabitCard({ habit, onToggle }: Props) {
           )}
         >
           {habit.todayCompleted ? (
-            <Check
-              className={cn("w-5 h-5", colors.text)}
-              strokeWidth={2.5}
-            />
+            <Check className={cn("w-5 h-5", colors.text)} strokeWidth={2.5} />
           ) : (
             <span className="text-xl">{habit.emoji}</span>
           )}
@@ -57,44 +59,48 @@ export default function HabitCard({ habit, onToggle }: Props) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {!habit.todayCompleted && (
-              <span className="text-base">{habit.emoji}</span>
-            )}
-            <p
-              className={cn(
-                "font-display font-600 text-base truncate transition-colors",
-                habit.todayCompleted ? "text-white/50 line-through" : "text-white"
-              )}
-            >
+            {!habit.todayCompleted && <span className="text-base">{habit.emoji}</span>}
+            <p className={cn(
+              "font-display font-600 text-base truncate transition-colors",
+              habit.todayCompleted ? "text-white/50 line-through" : "text-white"
+            )}>
               {habit.name}
             </p>
           </div>
 
-          {/* Week dots */}
-          <div className="flex gap-1 mt-2">
-            {habit.weekLogs.map((log) => (
-              <div
-                key={log.date}
-                className={cn(
+          {/* Frequency progress OR week dots */}
+          {isFrequency && habit.periodCompletions !== undefined && habit.periodTarget !== undefined ? (
+            <div className="mt-1.5">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", colors.dot)}
+                    style={{ width: `${Math.min((habit.periodCompletions / habit.periodTarget) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className={cn("text-xs font-display font-600", colors.text)}>
+                  {habit.periodCompletions}/{habit.periodTarget}
+                </span>
+              </div>
+              <p className="text-white/30 text-[10px] mt-0.5">{scheduleLabel(habit.schedule)}</p>
+            </div>
+          ) : (
+            <div className="flex gap-1 mt-2">
+              {habit.weekLogs.map((log) => (
+                <div key={log.date} className={cn(
                   "w-4 h-1.5 rounded-full transition-all",
-                  !log.scheduled
-                    ? "bg-surface-3 opacity-30"
-                    : log.completed
-                    ? colors.dot
-                    : "bg-surface-3"
-                )}
-              />
-            ))}
-          </div>
+                  !log.scheduled ? "bg-surface-3 opacity-30" : log.completed ? colors.dot : "bg-surface-3"
+                )} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Streak */}
         {habit.currentStreak > 0 && (
           <div className="flex items-center gap-1 flex-shrink-0">
             <Flame className="w-3.5 h-3.5 text-orange-400" />
-            <span className="font-display font-700 text-sm text-orange-400">
-              {habit.currentStreak}
-            </span>
+            <span className="font-display font-700 text-sm text-orange-400">{habit.currentStreak}</span>
           </div>
         )}
 

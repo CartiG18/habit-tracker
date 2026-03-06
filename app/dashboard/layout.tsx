@@ -22,7 +22,7 @@ export default function DashboardLayout({
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <div className="text-4xl animate-pulse">🔒</div>
+        <div className="text-4xl animate-pulse">🧠</div>
       </div>
     );
   }

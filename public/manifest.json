@@ -1,7 +1,7 @@
 {
-  "name": "Lock In – Habit Tracker",
-  "short_name": "Lock In",
-  "description": "Build daily habits and stay locked in",
+  "name": "Synapse – Habit Tracker",
+  "short_name": "Synapse",
+  "description": "Build daily habits and stay in sync",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",
