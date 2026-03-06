@@ -68,8 +68,9 @@ export function useHabits() {
     if (!user) return;
     try {
       await toggleHabitLog(user.uid, habitId, getTodayString());
-    } catch (err) {
-      toast.error("Failed to update habit");
+    } catch (err: any) {
+      console.error("Toggle error:", err);
+      toast.error(err.message ?? "Failed to update habit");
     }
   }, [user]);
 

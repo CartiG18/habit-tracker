@@ -130,10 +130,17 @@ export default function AddHabitModal({ open, onClose }: Props) {
             <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Color</label>
             <div className="flex gap-2 mt-2">
               {COLOR_OPTIONS.map((c) => (
-                <button key={c} onClick={() => setColor(c)}
-                  className={cn("w-8 h-8 rounded-full transition-all", HABIT_COLORS[c].dot,
-                    color === c ? "ring-2 ring-white ring-offset-2 ring-offset-surface-1" : "opacity-60"
-                  )} />
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className="w-8 h-8 rounded-full transition-all"
+                  style={{
+                    background: HABIT_COLORS[c].hex,
+                    opacity: color === c ? 1 : 0.4,
+                    outline: color === c ? `3px solid white` : "none",
+                    outlineOffset: "2px",
+                  }}
+                />
               ))}
             </div>
           </div>
