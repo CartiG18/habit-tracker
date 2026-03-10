@@ -9,8 +9,7 @@ import React, {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -43,15 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getRedirectResult(auth).then(async (result) => {
-      if (result?.user) {
-        const profile = await fetchOrCreateProfile(result.user);
-        setUserProfile(profile);
-        window.location.href = "/dashboard";
-      }
-    }).catch(console.error);
-  
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser?.email ?? "null");
       setUser(firebaseUser);
       if (firebaseUser) {
         const profile = await fetchOrCreateProfile(firebaseUser);
@@ -87,8 +79,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signInWithGoogle(): Promise<void> {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
+      window.location.href = "/dashboard";
     } catch (err: any) {
+      if (
+        err.code === "auth/popup-blocked" ||
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) {
+        return;
+      }
       throw err;
     }
   }

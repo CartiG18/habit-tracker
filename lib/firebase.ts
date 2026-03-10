@@ -1,10 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  indexedDBLocalPersistence,
-  initializeAuth,
-} from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -18,13 +13,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Use indexedDB instead of localStorage — works in all browsers including Safari PWA
-export const auth = getApps().length > 1
-  ? getAuth(app)
-  : initializeAuth(app, {
-      persistence: indexedDBLocalPersistence,
-    });
-
+export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
