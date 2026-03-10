@@ -1,7 +1,11 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getMessaging, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,18 +16,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Prevent duplicate initialization in Next.js
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
-// Helps with Safari/iOS auth persistence
-setPersistence(auth, browserLocalPersistence);
+// Use indexedDB instead of localStorage — works in all browsers including Safari PWA
+export const auth = getApps().length > 1
+  ? getAuth(app)
+  : initializeAuth(app, {
+      persistence: indexedDBLocalPersistence,
+    });
+
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Messaging only works in browser + only if supported
 export const getFirebaseMessaging = async () => {
   if (typeof window === "undefined") return null;
+  const { isSupported, getMessaging } = await import("firebase/messaging");
   const supported = await isSupported();
   if (!supported) return null;
   return getMessaging(app);

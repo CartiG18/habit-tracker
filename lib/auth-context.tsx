@@ -9,7 +9,8 @@ import React, {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -42,8 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Handle redirect result on mobile
-
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) {
+        const profile = await fetchOrCreateProfile(result.user);
+        setUserProfile(profile);
+        window.location.href = "/dashboard";
+      }
+    }).catch(console.error);
+  
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -80,15 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signInWithGoogle(): Promise<void> {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
-      if (
-        err.code === "auth/popup-blocked" ||
-        err.code === "auth/popup-closed-by-user" ||
-        err.code === "auth/cancelled-popup-request"
-      ) {
-        return;
-      }
       throw err;
     }
   }
