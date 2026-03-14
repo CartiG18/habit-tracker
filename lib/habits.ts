@@ -216,10 +216,10 @@ export function calculateStreak(habit: Habit, logs: HabitLog[]): { current: numb
 export async function getHabitWithStats(userId: string, habit: Habit): Promise<HabitWithStats> {
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
   const sevenDaysAgo = format(subDays(new Date(), 6), "yyyy-MM-dd");
 
-  const logs = await getHabitLogs(userId, habit.id, thirtyDaysAgo, today);
+  const logs = await getHabitLogs(userId, habit.id, ninetyDaysAgo, today);
   // Guard for old habits created before the schedule update
   if (!habit.schedule) {
     habit = {

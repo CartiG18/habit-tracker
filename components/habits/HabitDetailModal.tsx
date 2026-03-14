@@ -15,8 +15,8 @@ interface Props {
 }
 
 export default function HabitDetailModal({ open, onClose, habit, onToggle }: Props) {
-  const { addNote, removeHabit, todayLogs } = useHabits();
-  const [note, setNote] = useState(todayLogs.get(habit.id)?.note ?? "");
+  const { addNote, removeHabit, dateLogs } = useHabits();
+  const [note, setNote] = useState(dateLogs.get(habit.id)?.note ?? "");
   const [savingNote, setSavingNote] = useState(false);
   const color = HABIT_COLORS[habit.color];
 

@@ -7,12 +7,14 @@ import { Toaster } from "react-hot-toast";
 const syne = Syne({
   subsets: ["latin"],
   variable: "--font-display",
+  display: "swap",
   weight: ["400", "500", "600", "700", "800"],
 });
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
   weight: ["300", "400", "500", "600"],
 });
 
@@ -58,7 +60,7 @@ export default function RootLayout({
                 color: "#fff",
                 border: "1px solid #2a2a2a",
                 borderRadius: "12px",
-                fontFamily: "var(--font-body)",
+                fontFamily: "var(--font-body), sans-serif",
               },
             }}
           />

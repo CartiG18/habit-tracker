@@ -13,16 +13,16 @@ import {
 } from "@/lib/habits";
 import { useAuth } from "@/lib/auth-context";
 import { Habit, HabitWithStats, HabitLog } from "@/types";
-import { getTodayString } from "@/lib/utils";
+import { getTodayString, formatDateString } from "@/lib/utils";
 import toast from "react-hot-toast";
 
-export function useHabits() {
+export function useHabits(selectedDate: string = getTodayString()) {
   const { user } = useAuth();
   const [habits, setHabits] = useState<HabitWithStats[]>([]);
-  const [todayLogs, setTodayLogs] = useState<Map<string, HabitLog>>(new Map());
+  const [dateLogs, setDateLogs] = useState<Map<string, HabitLog>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  // Real-time habits listener
+  // Real-time habits listener (Enriched with stats)
   useEffect(() => {
     if (!user) { setHabits([]); setLoading(false); return; }
     const q = query(collection(db, "habits"), where("userId", "==", user.uid));
@@ -32,20 +32,26 @@ export function useHabits() {
         .filter((h) => !h.archivedAt)
         .sort((a, b) => a.order - b.order);
       const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
-      setHabits(enriched);
+      
+      // Merge with current dateLogs status
+      setHabits(enriched.map(h => {
+        return {
+          ...h,
+          todayCompleted: false // Default to false, let the log effect fix it
+        };
+      }));
       setLoading(false);
     });
     return unsubscribe;
-  }, [user]);
+  }, [user]); // habits only need to re-fetch if user changes; stats are updated by the log listener below
 
-  // Real-time today's logs listener
+  // Real-time logs listener for the SELECTED date
   useEffect(() => {
     if (!user) return;
-    const today = getTodayString();
     const q = query(
       collection(db, "habitLogs"),
       where("userId", "==", user.uid),
-      where("date", "==", today)
+      where("date", "==", selectedDate)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logMap = new Map<string, HabitLog>();
@@ -53,7 +59,9 @@ export function useHabits() {
         const log = { id: d.id, ...d.data() } as HabitLog;
         logMap.set(log.habitId, log);
       });
-      setTodayLogs(logMap);
+      setDateLogs(logMap);
+      
+      // Update the 'todayCompleted' (current view) status in the habits list
       setHabits((prev) =>
         prev.map((h) => ({
           ...h,
@@ -62,22 +70,22 @@ export function useHabits() {
       );
     });
     return unsubscribe;
-  }, [user]);
+  }, [user, selectedDate]);
 
-  const toggle = useCallback(async (habitId: string) => {
+  const toggle = useCallback(async (habitId: string, date: string = selectedDate) => {
     if (!user) return;
     try {
-      await toggleHabitLog(user.uid, habitId, getTodayString());
+      await toggleHabitLog(user.uid, habitId, date);
     } catch (err: any) {
       console.error("Toggle error:", err);
       toast.error(err.message ?? "Failed to update habit");
     }
-  }, [user]);
+  }, [user, selectedDate]);
 
-  const addNote = useCallback(async (habitId: string, note: string) => {
+  const addNote = useCallback(async (habitId: string, note: string, date: string = selectedDate) => {
     if (!user) return;
-    await updateHabitNote(user.uid, habitId, getTodayString(), note);
-  }, [user]);
+    await updateHabitNote(user.uid, habitId, date, note);
+  }, [user, selectedDate]);
 
   const addHabit = useCallback(async (data: Omit<Habit, "id" | "userId" | "createdAt" | "order">) => {
     if (!user) return;
@@ -95,5 +103,5 @@ export function useHabits() {
     toast.success("Habit archived");
   }, []);
 
-  return { habits, todayLogs, loading, toggle, addNote, addHabit, editHabit, removeHabit };
+  return { habits, dateLogs, loading, toggle, addNote, addHabit, editHabit, removeHabit };
 }

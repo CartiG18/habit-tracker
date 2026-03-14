@@ -47,7 +47,10 @@ export function formatStreakText(streak: number): string {
   return `${streak} day streak 🔥`;
 }
 
-export function getTodayString(): string {
-  const d = new Date();
+export function formatDateString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function getTodayString(): string {
+  return formatDateString(new Date());
 }

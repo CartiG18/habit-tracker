@@ -117,12 +117,14 @@ export default function HabitCard({ habit, onToggle }: Props) {
         <ChevronRight className="w-4 h-4 text-white/20" />
       </div>
 
-      <HabitDetailModal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        habit={habit}
-        onToggle={onToggle}
-      />
+      {detailOpen && (
+        <HabitDetailModal
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          habit={habit}
+          onToggle={onToggle}
+        />
+      )}
     </>
   );
 }
