@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, subDays, isSameDay, startOfDay } from "date-fns";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useHabits } from "@/hooks/useHabits";
 import HabitCard from "@/components/habits/HabitCard";
 import AddHabitModal from "@/components/habits/AddHabitModal";
@@ -13,6 +13,9 @@ import { formatDateString } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const dateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
   
@@ -40,6 +43,20 @@ export default function DashboardPage() {
   };
 
   const firstName = user?.displayName?.split(" ")[0] ?? "there";
+
+  if (!mounted) {
+    return (
+      <div className="px-4 pt-14 max-w-lg mx-auto">
+        <div className="h-20 w-3/4 bg-surface-2 animate-pulse rounded-2xl mb-6" />
+        <div className="h-16 bg-surface-2 animate-pulse rounded-2xl mb-6" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-surface-2 animate-pulse rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pt-14 safe-top max-w-lg mx-auto pb-24">
@@ -100,10 +117,11 @@ export default function DashboardPage() {
           </div>
         ) : (
           filteredHabits.map((habit, i) => (
-            <div key={habit.id} className="animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
+            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
               <HabitCard 
                 habit={habit} 
                 onToggle={() => toggle(habit.id, dateString)} 
+                selectedDate={dateString}
               />
             </div>
           ))

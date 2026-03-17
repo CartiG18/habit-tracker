@@ -13,7 +13,7 @@ import {
 } from "@/lib/habits";
 import { useAuth } from "@/lib/auth-context";
 import { Habit, HabitWithStats, HabitLog } from "@/types";
-import { getTodayString, formatDateString } from "@/lib/utils";
+import { getTodayString } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export function useHabits(selectedDate: string = getTodayString()) {
@@ -32,18 +32,21 @@ export function useHabits(selectedDate: string = getTodayString()) {
         .filter((h) => !h.archivedAt)
         .sort((a, b) => a.order - b.order);
       const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
-      
-      // Merge with current dateLogs status
-      setHabits(enriched.map(h => {
-        return {
+
+      setHabits((prev) => {
+        // Create a map of existing completion statuses from the previous state
+        // to avoid "jumping" when habits list refreshes but logs haven't yet
+        const logMap = new Map(prev.map(h => [h.id, h.todayCompleted]));
+        
+        return enriched.map(h => ({
           ...h,
-          todayCompleted: false // Default to false, let the log effect fix it
-        };
-      }));
+          todayCompleted: logMap.has(h.id) ? logMap.get(h.id)! : h.todayCompleted
+        }));
+      });
       setLoading(false);
     });
     return unsubscribe;
-  }, [user]); // habits only need to re-fetch if user changes; stats are updated by the log listener below
+  }, [user]);
 
   // Real-time logs listener for the SELECTED date
   useEffect(() => {

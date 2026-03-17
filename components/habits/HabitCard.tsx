@@ -10,9 +10,10 @@ import HabitDetailModal from "./HabitDetailModal";
 interface Props {
   habit: HabitWithStats;
   onToggle: () => void;
+  selectedDate: string;
 }
 
-export default function HabitCard({ habit, onToggle }: Props) {
+export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [popping, setPopping] = useState(false);
   const color = HABIT_COLORS[habit.color];
@@ -123,6 +124,7 @@ export default function HabitCard({ habit, onToggle }: Props) {
           onClose={() => setDetailOpen(false)}
           habit={habit}
           onToggle={onToggle}
+          selectedDate={selectedDate}
         />
       )}
     </>
