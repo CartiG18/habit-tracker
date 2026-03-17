@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Flame, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { HabitWithStats } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
-import { scheduleLabel } from "@/lib/habits";
 import HabitDetailModal from "./HabitDetailModal";
 
 interface Props {
@@ -15,14 +14,11 @@ interface Props {
 
 export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
-  const [popping, setPopping] = useState(false);
   const color = HABIT_COLORS[habit.color];
   const isFrequency = habit.schedule.type === "frequency_week" || habit.schedule.type === "frequency_month";
 
   function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
-    setPopping(true);
-    setTimeout(() => setPopping(false), 350);
     onToggle();
   }
 
@@ -31,91 +27,86 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
       <div
         onClick={() => setDetailOpen(true)}
         className={cn(
-          "rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all duration-150 active:scale-[0.98]",
-          "hover:brightness-110"
+          "p-4 flex items-center gap-4 cursor-pointer transition-all duration-300",
+          "bg-basalt-light border border-amber/20 hover:border-amber/50 relative overflow-hidden"
         )}
-        style={{
-          background: "rgba(255,255,255,0.03)",
-          border: habit.todayCompleted
-            ? `1px solid ${color.border}`
-            : "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(12px)",
-        }}
       >
-        {/* Check button */}
+        {/* Scanline subtle overlay for the card */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
+
+        {/* Mechanical Toggle Switch */}
         <button
           onClick={handleToggle}
-          className={cn("w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200", popping && "habit-check-pop")}
-          style={habit.todayCompleted
-            ? { background: color.bgAlpha, border: `1.5px solid ${color.border}` }
-            : { background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.1)" }
-          }
+          className={cn(
+            "w-12 h-16 rounded-sm flex flex-col justify-between p-1 flex-shrink-0 transition-all duration-300 relative z-10", 
+            habit.todayCompleted ? "bg-basalt shadow-mech-in" : "bg-putty shadow-mech-out"
+          )}
         >
-          {habit.todayCompleted
-            ? <Check className="w-5 h-5" strokeWidth={2.5} style={{ color: color.hex }} />
-            : <span className="text-xl">{habit.emoji}</span>
-          }
+          {/* Top light indicator */}
+          <div className={cn(
+            "w-full h-3 rounded-sm transition-colors duration-300",
+            habit.todayCompleted ? "bg-signal shadow-[0_0_8px_rgba(50,205,50,0.8)]" : "bg-basalt-light shadow-inner"
+          )} />
+          {/* Switch grip */}
+          <div className={cn(
+            "w-full h-8 rounded-sm transition-all duration-300",
+            habit.todayCompleted ? "bg-putty-dark translate-y-3" : "bg-putty-light shadow-md"
+          )}>
+            <div className="w-full h-[1px] bg-putty-dark mt-1 opacity-50" />
+            <div className="w-full h-[1px] bg-putty-dark mt-1 opacity-50" />
+            <div className="w-full h-[1px] bg-putty-dark mt-1 opacity-50" />
+          </div>
         </button>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {!habit.todayCompleted && <span className="text-base">{habit.emoji}</span>}
-            <p className={cn("font-display font-600 text-base truncate transition-colors",
-              habit.todayCompleted ? "text-white/50 line-through" : "text-white"
+        <div className="flex-1 min-w-0 z-10 pl-2">
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-lg opacity-80",
+              habit.todayCompleted && "grayscale opacity-40"
+            )}>{habit.emoji}</span>
+            <p className={cn("font-mono font-700 text-sm truncate uppercase tracking-widest transition-colors",
+              habit.todayCompleted ? "text-signal text-signal" : "text-amber text-glow"
             )}>
               {habit.name}
             </p>
           </div>
 
-          {/* Frequency progress bar OR week dots */}
-          {isFrequency && habit.periodCompletions !== undefined && habit.periodTarget !== undefined ? (
-            <div className="mt-1.5">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+          {/* Progress context as terminal data */}
+          <div className="mt-2 flex items-center gap-3">
+            {isFrequency && habit.periodCompletions !== undefined && habit.periodTarget !== undefined ? (
+              <span className="text-[10px] font-mono font-700 uppercase tracking-widest text-amber/60">
+                DATA: {habit.periodCompletions}/{habit.periodTarget}
+              </span>
+            ) : (
+              <div className="flex gap-1.5 items-center">
+                {habit.weekLogs.map((log, i) => (
                   <div
-                    className="h-full rounded-full transition-all duration-500"
+                    key={log.date}
+                    className="w-1.5 h-3 transition-all"
                     style={{
-                      width: `${Math.min((habit.periodCompletions / habit.periodTarget) * 100, 100)}%`,
-                      background: color.hex,
+                      background: !log.scheduled
+                        ? "transparent"
+                        : log.completed
+                        ? "var(--signal)"
+                        : "var(--amber)",
+                      opacity: !log.scheduled ? 0 : log.completed ? 1 : 0.3,
+                      boxShadow: log.completed ? "0 0 5px rgba(50,205,50,0.6)" : "none",
                     }}
                   />
-                </div>
-                <span className="text-xs font-display font-600" style={{ color: color.hex }}>
-                  {habit.periodCompletions}/{habit.periodTarget}
-                </span>
+                ))}
               </div>
-              <p className="text-white/30 text-[10px] mt-0.5">{scheduleLabel(habit.schedule)}</p>
-            </div>
-          ) : (
-            <div className="flex gap-1 mt-2">
-              {habit.weekLogs.map((log) => (
-                <div
-                  key={log.date}
-                  className="w-4 h-1.5 rounded-full transition-all"
-                  style={{
-                    background: !log.scheduled
-                      ? "rgba(255,255,255,0.06)"
-                      : log.completed
-                      ? color.hex
-                      : "rgba(255,255,255,0.1)",
-                    opacity: !log.scheduled ? 0.3 : 1,
-                  }}
-                />
-              ))}
-            </div>
-          )}
+            )}
+            
+            {habit.currentStreak > 0 && (
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="font-mono font-700 text-[10px] text-amber/80 uppercase">SEQ:{habit.currentStreak.toString().padStart(2, '0')}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Streak */}
-        {habit.currentStreak > 0 && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Flame className="w-3.5 h-3.5 text-orange-400" />
-            <span className="font-display font-700 text-sm text-orange-400">{habit.currentStreak}</span>
-          </div>
-        )}
-
-        <ChevronRight className="w-4 h-4 text-white/20" />
+        <ChevronRight className="w-5 h-5 text-amber/40 z-10" />
       </div>
 
       {detailOpen && (

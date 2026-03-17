@@ -8,52 +8,57 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["var(--font-display)"],
-        body: ["var(--font-body)"],
+        mono: ["var(--font-mono)", "monospace"],
       },
       colors: {
-        brand: {
-          50: "#f0fdf4",
-          100: "#dcfce7",
-          200: "#bbf7d0",
-          300: "#86efac",
-          400: "#4ade80",
-          500: "#22c55e",
-          600: "#16a34a",
-          700: "#15803d",
-          800: "#166534",
-          900: "#14532d",
+        putty: {
+          DEFAULT: "#BDB7AB",
+          dark: "#8A857A",
+          light: "#E2DDD3",
         },
-        surface: {
-          0: "#0a0a0a",
-          1: "#111111",
-          2: "#1a1a1a",
-          3: "#222222",
-          4: "#2a2a2a",
+        basalt: {
+          DEFAULT: "#1A1B1E",
+          dark: "#0F0F12",
+          light: "#2A2B30",
         },
+        amber: {
+          DEFAULT: "#FFB000",
+          dim: "rgba(255, 176, 0, 0.3)",
+          glow: "rgba(255, 176, 0, 0.6)",
+        },
+        signal: {
+          DEFAULT: "#32CD32",
+          dim: "rgba(50, 205, 50, 0.3)",
+        },
+      },
+      boxShadow: {
+        "bezel-outer": "4px 4px 10px rgba(0,0,0,0.5), -2px -2px 5px rgba(255,255,255,0.4)",
+        "bezel-inner": "inset 4px 4px 10px rgba(0,0,0,0.6), inset -2px -2px 5px rgba(255,255,255,0.1)",
+        "crt-screen": "inset 0 0 40px rgba(0,0,0,0.8)",
+        "mech-out": "2px 2px 0px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.6), inset -2px -2px 4px rgba(0,0,0,0.4)",
+        "mech-in": "inset 3px 3px 6px rgba(0,0,0,0.6), inset -1px -1px 3px rgba(255,255,255,0.2)",
+      },
+      backgroundImage: {
+        "graph-paper": "linear-gradient(rgba(255, 176, 0, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 176, 0, 0.1) 1px, transparent 1px)",
       },
       animation: {
-        "check-pop": "checkPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        "slide-up": "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-        "fade-in": "fadeIn 0.3s ease",
-        "streak-glow": "streakGlow 2s ease-in-out infinite",
+        "boot-scroll": "bootScroll 2s steps(40, end)",
+        "flicker": "flicker 0.15s infinite",
+        "scanline": "scanline 8s linear infinite",
       },
       keyframes: {
-        checkPop: {
-          "0%": { transform: "scale(0.8)", opacity: "0.5" },
-          "100%": { transform: "scale(1)", opacity: "1" },
+        bootScroll: {
+          "0%": { height: "0%" },
+          "100%": { height: "100%" },
         },
-        slideUp: {
-          "0%": { transform: "translateY(20px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
+        flicker: {
+          "0%": { opacity: "0.95" },
+          "50%": { opacity: "1" },
+          "100%": { opacity: "0.98" },
         },
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        streakGlow: {
-          "0%, 100%": { boxShadow: "0 0 10px rgba(251, 146, 60, 0.3)" },
-          "50%": { boxShadow: "0 0 25px rgba(251, 146, 60, 0.6)" },
+        scanline: {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
         },
       },
     },

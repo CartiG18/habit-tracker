@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X } from "lucide-react";
 import { useHabits } from "@/hooks/useHabits";
 import { HABIT_COLORS, DAYS, EMOJI_OPTIONS, cn } from "@/lib/utils";
 import { HabitColor, DayOfWeek, HabitSchedule } from "@/types";
@@ -19,7 +19,7 @@ export default function AddHabitModal({ open, onClose }: Props) {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [emoji, setEmoji] = useState("🎯");
+  const [emoji, setEmoji] = useState("⚡");
   const [color, setColor] = useState<HabitColor>("green");
   const [scheduleType, setScheduleType] = useState<ScheduleType>("weekly");
 
@@ -69,7 +69,7 @@ export default function AddHabitModal({ open, onClose }: Props) {
   }
 
   function resetAndClose() {
-    setName(""); setDescription(""); setEmoji("🎯"); setColor("green");
+    setName(""); setDescription(""); setEmoji("⚡"); setColor("green");
     setScheduleType("weekly"); setSelectedDays([0,1,2,3,4,5,6]);
     setSelectedDates([1]); setFreqCount(3);
     onClose();
@@ -78,158 +78,131 @@ export default function AddHabitModal({ open, onClose }: Props) {
   if (!open) return null;
 
   const SCHEDULE_TABS: { value: ScheduleType; label: string }[] = [
-    { value: "weekly", label: "Days of week" },
-    { value: "monthly_dates", label: "Days of month" },
-    { value: "frequency_week", label: "Times/week" },
-    { value: "frequency_month", label: "Times/month" },
+    { value: "weekly", label: "DAYS" },
+    { value: "monthly_dates", label: "DATES" },
+    { value: "frequency_week", label: "FRQ/W" },
+    { value: "frequency_month", label: "FRQ/M" },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetAndClose} />
-      <div className="relative w-full max-w-lg bg-surface-1 rounded-t-3xl p-6 pb-10 animate-slide-up max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl font-700 text-white">New Habit</h2>
-          <button onClick={resetAndClose} className="text-white/40 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={resetAndClose} />
+      
+      <div className="relative w-full max-w-lg bg-putty border-4 border-putty-dark rounded-xl shadow-mech-out p-3 animate-slide-up">
+        <div className="bg-basalt crt-screen rounded-lg border-[6px] border-putty-dark shadow-bezel-inner relative overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="scanline-overlay"></div>
+          <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
 
-        <div className="space-y-5">
-          {/* Emoji */}
-          <div>
-            <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Icon</label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {EMOJI_OPTIONS.map((e) => (
-                <button key={e} onClick={() => setEmoji(e)}
-                  className={cn("w-10 h-10 rounded-xl text-lg transition-all",
-                    emoji === e ? "bg-emerald-500/20 border-2 border-emerald-500" : "bg-surface-3 hover:bg-surface-4"
-                  )}>
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Name */}
-          <div>
-            <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Habit name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Morning run"
-              className="w-full mt-2 bg-surface-3 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:border-emerald-500/50" />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Description (optional)</label>
-            <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Any notes..."
-              className="w-full mt-2 bg-surface-3 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:border-emerald-500/50" />
-          </div>
-
-          {/* Color */}
-          <div>
-            <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Color</label>
-            <div className="flex gap-2 mt-2">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full transition-all"
-                  style={{
-                    background: HABIT_COLORS[c].hex,
-                    opacity: color === c ? 1 : 0.4,
-                    outline: color === c ? `3px solid white` : "none",
-                    outlineOffset: "2px",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Schedule type tabs */}
-          <div>
-            <label className="text-white/40 text-xs font-display font-600 uppercase tracking-wider">Schedule</label>
-            <div className="grid grid-cols-2 gap-1.5 mt-2 bg-surface-2 rounded-xl p-1">
-              {SCHEDULE_TABS.map((tab) => (
-                <button key={tab.value} onClick={() => setScheduleType(tab.value)}
-                  className={cn("py-2 px-2 rounded-lg text-xs font-display font-600 transition-all",
-                    scheduleType === tab.value ? "bg-white text-black" : "text-white/40 hover:text-white/60"
-                  )}>
-                  {tab.label}
-                </button>
-              ))}
+          <div className="flex-1 overflow-y-auto z-20 relative p-6">
+            <div className="flex items-center justify-between mb-6 border-b border-amber/30 pb-4">
+              <h2 className="font-mono text-xl font-800 text-amber text-glow uppercase tracking-wide">INIT_NEW_PROCESS</h2>
+              <button onClick={resetAndClose} className="p-2 border border-amber/30 text-amber/60 hover:text-amber hover:bg-amber/10 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Weekly: day picker */}
-            {scheduleType === "weekly" && (
-              <div className="mt-3">
-                <div className="flex gap-1 mb-2">
-                  <button onClick={() => setSelectedDays([0,1,2,3,4,5,6])} className="text-xs text-emerald-400 hover:text-emerald-300 mr-2">Every day</button>
-                  <button onClick={() => setSelectedDays([1,2,3,4,5])} className="text-xs text-emerald-400 hover:text-emerald-300">Weekdays</button>
-                </div>
-                <div className="flex gap-1.5">
-                  {DAYS.map(({ short, value }) => (
-                    <button key={value} onClick={() => toggleDay(value)}
-                      className={cn("flex-1 py-2 rounded-xl text-xs font-display font-600 transition-all",
-                        selectedDays.includes(value) ? "bg-emerald-500 text-black" : "bg-surface-3 text-white/40 hover:text-white/60"
+            <div className="space-y-6">
+              {/* Emoji */}
+              <div>
+                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">SYS.ICON</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {EMOJI_OPTIONS.map((e) => (
+                    <button key={e} onClick={() => setEmoji(e)}
+                      className={cn("w-10 h-10 border text-lg transition-all duration-200 flex items-center justify-center",
+                        emoji === e ? "bg-amber/20 border-amber shadow-[inset_0_0_10px_rgba(255,176,0,0.5)]" : "bg-basalt-light border-amber/30 hover:border-amber/60"
                       )}>
-                      {short[0]}
+                      {e}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Monthly dates: date grid */}
-            {scheduleType === "monthly_dates" && (
-              <div className="mt-3">
-                <p className="text-white/40 text-xs mb-2">Select which days of the month</p>
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((date) => (
-                    <button key={date} onClick={() => toggleDate(date)}
-                      className={cn("aspect-square rounded-lg text-xs font-display font-600 transition-all",
-                        selectedDates.includes(date) ? "bg-emerald-500 text-black" : "bg-surface-3 text-white/40 hover:text-white/60"
-                      )}>
-                      {date}
-                    </button>
+              {/* Name */}
+              <div>
+                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">PROCESS_ID</label>
+                <div className="flex items-center mt-2 border-b-2 border-amber/50 bg-basalt-light/30">
+                  <span className="text-amber/40 font-mono px-2">{`>`}</span>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ENTER IDENTIFIER..."
+                    className="w-full py-3 text-amber placeholder-amber/20 font-mono text-lg outline-none bg-transparent uppercase focus:bg-amber/5 transition-colors" />
+                </div>
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">LED_COLOR</label>
+                <div className="flex gap-2.5 mt-3">
+                  {COLOR_OPTIONS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setColor(c)}
+                      className={cn("w-8 h-8 rounded-sm transition-all duration-300 border-2",
+                        color === c ? "border-amber shadow-[0_0_8px_currentColor]" : "border-basalt opacity-50 hover:opacity-100"
+                      )}
+                      style={{
+                        background: HABIT_COLORS[c].hex,
+                        color: HABIT_COLORS[c].hex, // for the shadow
+                      }}
+                    />
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Frequency: times per week or month */}
-            {(scheduleType === "frequency_week" || scheduleType === "frequency_month") && (
-              <div className="mt-3">
-                <p className="text-white/40 text-xs mb-3">
-                  How many times {scheduleType === "frequency_week" ? "per week" : "per month"}?
-                </p>
-                <div className="flex items-center justify-center gap-6">
-                  <button onClick={() => setFreqCount((n) => Math.max(1, n - 1))}
-                    className="w-10 h-10 rounded-full bg-surface-3 text-white text-xl hover:bg-surface-4 transition-colors flex items-center justify-center">
-                    −
-                  </button>
-                  <div className="text-center">
-                    <span className="font-display font-800 text-4xl text-white">{freqCount}</span>
-                    <p className="text-white/40 text-xs mt-1">
-                      {scheduleType === "frequency_week" ? "days / week" : "days / month"}
-                    </p>
+              {/* Schedule */}
+              <div className="pt-4 border-t border-amber/20">
+                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">EXECUTION_PARAMS</label>
+                <div className="grid grid-cols-4 gap-1 mt-3 bg-basalt-light/50 border border-amber/30 p-1">
+                  {SCHEDULE_TABS.map((tab) => (
+                    <button key={tab.value} onClick={() => setScheduleType(tab.value)}
+                      className={cn("py-2 px-1 text-[10px] font-mono font-700 transition-all",
+                        scheduleType === tab.value ? "bg-amber text-basalt shadow-[0_0_5px_rgba(255,176,0,0.5)]" : "text-amber/50 hover:bg-amber/10"
+                      )}>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Weekly */}
+                {scheduleType === "weekly" && (
+                  <div className="mt-4 flex gap-1">
+                    {DAYS.map(({ short, value }) => (
+                      <button key={value} onClick={() => toggleDay(value)}
+                        className={cn("flex-1 py-3 transition-all duration-200 font-mono text-[9px] font-700 border",
+                          selectedDays.includes(value) ? "bg-amber/20 text-amber border-amber shadow-[inset_0_0_8px_rgba(255,176,0,0.4)]" : "bg-basalt-light border-amber/30 text-amber/40 hover:text-amber/80"
+                        )}>
+                        {short}
+                      </button>
+                    ))}
                   </div>
-                  <button onClick={() => setFreqCount((n) => Math.min(scheduleType === "frequency_week" ? 7 : 31, n + 1))}
-                    className="w-10 h-10 rounded-full bg-surface-3 text-white text-xl hover:bg-surface-4 transition-colors flex items-center justify-center">
-                    +
-                  </button>
-                </div>
-                <p className="text-white/30 text-xs text-center mt-3">
-                  Complete on any days you choose — we'll track your progress toward the target.
-                </p>
+                )}
+
+                {/* Frequency */}
+                {(scheduleType === "frequency_week" || scheduleType === "frequency_month") && (
+                  <div className="mt-4 flex items-center justify-center gap-6 bg-basalt-light/30 p-4 border border-amber/30">
+                    <button onClick={() => setFreqCount((n) => Math.max(1, n - 1))}
+                      className="w-10 h-10 border border-amber text-amber hover:bg-amber/20 transition-colors flex items-center justify-center font-mono font-800 text-xl">
+                      −
+                    </button>
+                    <div className="text-center min-w-[80px]">
+                      <span className="font-mono font-800 text-3xl text-amber text-glow leading-none">{freqCount}</span>
+                      <p className="text-amber/50 text-[9px] font-mono uppercase tracking-widest mt-1">
+                        TARGET
+                      </p>
+                    </div>
+                    <button onClick={() => setFreqCount((n) => Math.min(scheduleType === "frequency_week" ? 7 : 31, n + 1))}
+                      className="w-10 h-10 border border-amber text-amber hover:bg-amber/20 transition-colors flex items-center justify-center font-mono font-800 text-xl">
+                      +
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            <button onClick={handleSave} disabled={!isValid() || saving}
+              className="w-full mt-8 bg-amber text-basalt hover:bg-amber/90 disabled:opacity-40 disabled:bg-amber/20 disabled:text-amber font-mono font-800 uppercase tracking-[0.2em] py-4 transition-all duration-300 shadow-[0_0_15px_rgba(255,176,0,0.4)]">
+              {saving ? "UPLOADING..." : "COMPILE_SEQUENCE"}
+            </button>
           </div>
         </div>
-
-        <button onClick={handleSave} disabled={!isValid() || saving}
-          className="w-full mt-6 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-display font-700 py-3.5 rounded-xl transition-colors">
-          {saving ? "Saving..." : "Save Habit"}
-        </button>
       </div>
     </div>
   );

@@ -35,23 +35,16 @@ export default function DashboardPage() {
   const completedCount = filteredHabits.filter((h) => h.todayCompleted).length;
   const allDone = filteredHabits.length > 0 && completedCount === filteredHabits.length;
 
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  };
-
-  const firstName = user?.displayName?.split(" ")[0] ?? "there";
+  const firstName = user?.displayName?.split(" ")[0]?.toUpperCase() ?? "OPERATOR";
 
   if (!mounted) {
     return (
-      <div className="px-4 pt-14 max-w-lg mx-auto">
-        <div className="h-20 w-3/4 bg-surface-2 animate-pulse rounded-2xl mb-6" />
-        <div className="h-16 bg-surface-2 animate-pulse rounded-2xl mb-6" />
+      <div className="px-4 pt-8 max-w-lg mx-auto">
+        <div className="h-10 w-3/4 bg-amber-dim animate-pulse mb-6" />
+        <div className="h-16 bg-amber-dim animate-pulse mb-6 border border-amber/30" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-surface-2 animate-pulse rounded-2xl" />
+            <div key={i} className="h-20 bg-amber-dim animate-pulse border border-amber/30" />
           ))}
         </div>
       </div>
@@ -59,19 +52,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="px-4 pt-14 safe-top max-w-lg mx-auto pb-24">
+    <div className="px-4 pt-8 max-w-lg mx-auto pb-32 relative z-20">
       {/* Header */}
-      <div className="mb-6">
-        <p className="text-white/40 font-body text-sm">
-          {isSameDay(selectedDate, today) ? "Today" : format(selectedDate, "EEEE, MMMM d")}
+      <div className="mb-6 flex flex-col border-b border-amber/30 pb-4">
+        <p className="text-amber/60 font-mono text-xs uppercase tracking-widest mb-1">
+          SYS.DATE: {isSameDay(selectedDate, today) ? "CURRENT_CYCLE" : format(selectedDate, "yyyy.MM.dd")}
         </p>
-        <h1 className="font-display text-2xl font-800 text-white mt-0.5">
-          {greeting()}, {firstName}
+        <h1 className="font-mono text-xl font-800 text-amber uppercase text-glow">
+          OP: {firstName}
         </h1>
       </div>
 
-      {/* Date Navigator */}
-      <div className="flex justify-between items-center mb-6 bg-surface-2/50 p-2 rounded-2xl border border-white/5">
+      {/* Date Navigator (Terminal style) */}
+      <div className="flex justify-between items-center mb-6 bg-basalt-light/50 border border-amber/30 p-1">
         {days.map((day) => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, today);
@@ -80,44 +73,53 @@ export default function DashboardPage() {
               key={day.toISOString()}
               onClick={() => setSelectedDate(day)}
               className={cn(
-                "flex flex-col items-center justify-center w-10 py-2 rounded-xl transition-all",
-                isSelected ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20" : "text-white/40 hover:text-white/60"
+                "flex flex-col items-center justify-center w-11 py-2 transition-all duration-150 relative",
+                isSelected 
+                  ? "bg-amber text-basalt font-800 shadow-[0_0_10px_rgba(255,176,0,0.5)]" 
+                  : "text-amber/60 hover:bg-amber/10 hover:text-amber"
               )}
             >
-              <span className="text-[10px] font-display font-700 uppercase tracking-wider">
+              <span className="text-[10px] font-mono uppercase tracking-widest">
                 {format(day, "EEE")}
               </span>
-              <span className="text-sm font-display font-800 mt-0.5">
-                {format(day, "d")}
+              <span className="text-sm font-mono mt-0.5">
+                {format(day, "dd")}
               </span>
               {isToday && !isSelected && (
-                <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
+                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber rounded-full animate-pulse" />
               )}
             </button>
           );
         })}
       </div>
 
-      {/* Progress ring */}
+      {/* Progress section */}
       {filteredHabits.length > 0 && (
-        <DailyProgress completed={completedCount} total={filteredHabits.length} allDone={allDone} />
+        <div className="mb-6">
+          <DailyProgress completed={completedCount} total={filteredHabits.length} allDone={allDone} />
+        </div>
       )}
 
       {/* Habit list */}
-      <div className="mt-6 space-y-3">
+      <div className="space-y-3 relative z-30">
+        <div className="flex justify-between items-center border-b border-amber/30 pb-2 mb-2">
+           <span className="text-amber/60 text-xs font-mono uppercase tracking-widest">ACTIVE_PROCESSES</span>
+           <span className="text-amber/60 text-xs font-mono">[{filteredHabits.length}]</span>
+        </div>
+
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-2xl bg-surface-2 animate-pulse" />
+            <div key={i} className="h-24 border border-amber/30 bg-amber-dim animate-pulse" />
           ))
         ) : filteredHabits.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-3">✨</div>
-            <p className="font-display text-white/60 font-600">No habits for this day</p>
-            <p className="text-white/30 text-sm mt-1">Check another day or add a new habit</p>
+          <div className="text-center py-16 border border-dashed border-amber/30 bg-basalt-light/20">
+            <div className="text-2xl mb-2 text-amber/40 animate-pulse">_</div>
+            <p className="font-mono text-amber/60 text-sm uppercase">NO PROCESSES FOUND</p>
+            <p className="text-amber/40 text-[10px] font-mono mt-1 uppercase">INITIALIZE NEW SEQUENCE</p>
           </div>
         ) : (
           filteredHabits.map((habit, i) => (
-            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
+            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
               <HabitCard 
                 habit={habit} 
                 onToggle={() => toggle(habit.id, dateString)} 
@@ -128,12 +130,12 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* FAB */}
+      {/* Chunky Mechanical FAB */}
       <button
         onClick={() => setAddOpen(true)}
-        className="fixed bottom-24 right-5 w-14 h-14 bg-emerald-500 hover:bg-emerald-400 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20 transition-all active:scale-95 z-10"
+        className="fixed bottom-28 right-6 w-14 h-14 bg-putty border-2 border-putty-dark rounded-md flex items-center justify-center shadow-mech-out active:shadow-mech-in active:translate-y-0.5 transition-all z-40 group"
       >
-        <Plus className="w-6 h-6 text-black" strokeWidth={2.5} />
+        <Plus className="w-6 h-6 text-basalt group-hover:scale-110 transition-transform duration-200" strokeWidth={3} />
       </button>
 
       <AddHabitModal open={addOpen} onClose={() => setAddOpen(false)} />

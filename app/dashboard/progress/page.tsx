@@ -8,9 +8,10 @@ import {
 } from "date-fns";
 import { useHabits } from "@/hooks/useHabits";
 import { useAuth } from "@/lib/auth-context";
-import { HABIT_COLORS } from "@/lib/utils";
+import { HABIT_COLORS, cn } from "@/lib/utils";
 import { getHabitLogs, isScheduledDay } from "@/lib/habits";
 import { HabitWithStats, HabitLog } from "@/types";
+import { Activity, TrendingUp } from "lucide-react";
 
 // Full month calendar grid for a single habit
 function MonthGrid({ habit, logs }: { habit: HabitWithStats; logs: HabitLog[] }) {
@@ -18,7 +19,6 @@ function MonthGrid({ habit, logs }: { habit: HabitWithStats; logs: HabitLog[] })
   const today = new Date();
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
-  // Pad to full weeks
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
@@ -27,11 +27,11 @@ function MonthGrid({ habit, logs }: { habit: HabitWithStats; logs: HabitLog[] })
   const todayStr = format(today, "yyyy-MM-dd");
 
   return (
-    <div>
+    <div className="animate-fade-in relative z-10">
       {/* Day headers */}
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7 mb-2">
         {["S","M","T","W","T","F","S"].map((d, i) => (
-          <div key={i} className="text-center text-[10px] text-white/20 py-1">{d}</div>
+          <div key={i} className="text-center text-[9px] font-mono font-700 text-amber/40 py-1 uppercase tracking-widest">{d}</div>
         ))}
       </div>
       {/* Day cells */}
@@ -47,17 +47,20 @@ function MonthGrid({ habit, logs }: { habit: HabitWithStats; logs: HabitLog[] })
           return (
             <div
               key={dateStr}
-              className="aspect-square rounded-md flex items-center justify-center text-[10px] font-display font-600 transition-all"
+              className={cn(
+                "aspect-square flex items-center justify-center text-[10px] font-mono font-700 transition-all duration-300 border",
+                isToday && "border-amber/80 shadow-[0_0_8px_rgba(255,176,0,0.6)]"
+              )}
               style={
                 !inMonth
-                  ? { background: "transparent" }
+                  ? { opacity: 0 }
                   : isFuture
-                  ? { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.15)" }
+                  ? { background: "var(--basalt)", color: "rgba(255,176,0,0.2)", border: "1px solid rgba(255,176,0,0.1)" }
                   : completed
-                  ? { background: color.hex, color: "#000" }
+                  ? { background: "var(--signal)", color: "var(--basalt)", border: "1px solid var(--signal)", boxShadow: "0 0 5px rgba(50,205,50,0.6)" }
                   : scheduled
-                  ? { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)", border: isToday ? `1px solid ${color.border}` : undefined }
-                  : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.15)" }
+                  ? { background: "var(--basalt-light)", color: "var(--amber)", border: "1px dashed rgba(255,176,0,0.3)" }
+                  : { background: "transparent", color: "rgba(255,176,0,0.1)", border: "1px solid transparent" }
               }
             >
               {inMonth ? getDate(day) : ""}
@@ -95,56 +98,68 @@ export default function ProgressPage() {
   }, [view, user, habits.length]);
 
   return (
-    <div className="px-4 pt-14 safe-top max-w-lg mx-auto pb-8">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-800 text-white">Progress</h1>
-        <p className="text-white/40 text-sm mt-0.5">Your consistency over time</p>
+    <div className="px-4 pt-8 max-w-lg mx-auto pb-32 relative z-20">
+      <div className="mb-6 flex flex-col border-b border-amber/30 pb-4">
+        <p className="text-amber/60 font-mono text-xs uppercase tracking-widest mb-1">
+          SYS.MODULE: DIAGNOSTICS
+        </p>
+        <h1 className="font-mono text-xl font-800 text-amber uppercase text-glow">
+          OP_CONSISTENCY_RPT
+        </h1>
       </div>
 
       {/* View toggle */}
-      <div className="flex rounded-xl p-1 mb-6" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="flex bg-basalt-light/50 p-1 mb-8 border border-amber/30">
         {(["week", "month"] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
-            className="flex-1 py-2 rounded-lg text-sm font-display font-600 transition-all"
-            style={view === v
-              ? { background: "#fff", color: "#000" }
-              : { color: "rgba(255,255,255,0.4)" }
-            }
+            className={cn(
+              "flex-1 py-2 font-mono text-[10px] font-800 uppercase tracking-widest transition-all duration-300",
+              view === v
+                ? "bg-amber text-basalt shadow-[0_0_10px_rgba(255,176,0,0.5)]"
+                : "text-amber/50 hover:text-amber hover:bg-amber/10"
+            )}
           >
-            {v === "week" ? "This Week" : "This Month"}
+            {v === "week" ? "SCOPE: 7_DAYS" : "SCOPE: 30_DAYS"}
           </button>
         ))}
       </div>
 
       {/* Streaks */}
-      <div className="mb-6">
-        <h2 className="font-display text-xs font-600 text-white/40 uppercase tracking-wider mb-3">
-          🔥 Current Streaks
+      <div className="mb-8">
+        <h2 className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 border-b border-amber/20 pb-2">
+          <Activity className="w-3 h-3" /> ACTIVE_SEQS
         </h2>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {[...habits]
             .sort((a, b) => b.currentStreak - a.currentStreak)
             .slice(0, 5)
-            .map((habit) => {
-              const color = HABIT_COLORS[habit.color];
+            .map((habit, i) => {
               const pct = Math.min(habit.currentStreak / 30, 1);
               return (
-                <div key={habit.id} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{habit.emoji}</span>
-                      <span className="font-display font-600 text-white text-sm">{habit.name}</span>
+                <div 
+                  key={habit.id} 
+                  className="p-4 bg-basalt-light/30 border border-amber/20 animate-slide-up relative overflow-hidden"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
+                  
+                  <div className="flex items-center justify-between mb-3 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl grayscale-[0.2] opacity-80">{habit.emoji}</span>
+                      <span className="font-mono font-700 text-sm text-amber uppercase tracking-widest">{habit.name}</span>
                     </div>
-                    <span className="font-display font-700 text-sm" style={{ color: color.hex }}>
-                      {habit.currentStreak}d 🔥
+                    <span className="font-mono font-800 text-xs text-signal text-signal">
+                      {habit.currentStreak.toString().padStart(2, '0')}
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  
+                  {/* Digital Bar */}
+                  <div className="h-2 bg-basalt border border-amber/30 relative z-10 overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct * 100}%`, background: color.hex }}
+                      className="h-full bg-signal transition-all duration-1000 ease-out shadow-[0_0_5px_rgba(50,205,50,0.6)]"
+                      style={{ width: `${pct * 100}%` }}
                     />
                   </div>
                 </div>
@@ -155,44 +170,51 @@ export default function ProgressPage() {
 
       {/* Per-habit completion */}
       <div>
-        <h2 className="font-display text-xs font-600 text-white/40 uppercase tracking-wider mb-3">
-          {view === "week" ? "7-Day Completion" : `${format(new Date(), "MMMM")} Overview`}
+        <h2 className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 border-b border-amber/20 pb-2">
+          <TrendingUp className="w-3 h-3" /> PROCESS_OVERVIEW
         </h2>
         <div className="space-y-4">
-          {habits.map((habit) => {
-            const color = HABIT_COLORS[habit.color];
+          {habits.map((habit, i) => {
             const rate = Math.round(habit.completionRate * 100);
 
             return (
-              <div key={habit.id} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div 
+                key={habit.id} 
+                className="p-5 bg-basalt-light/30 border border-amber/20 animate-slide-up relative overflow-hidden"
+                style={{ animationDelay: `${(i + 3) * 100}ms` }}
+              >
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
+
                 {/* Habit header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span>{habit.emoji}</span>
-                    <span className="font-display font-600 text-white text-sm">{habit.name}</span>
+                <div className="flex items-center justify-between mb-5 relative z-10 border-b border-amber/10 pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl opacity-80">{habit.emoji}</span>
+                    <span className="font-mono font-800 text-amber text-sm uppercase tracking-widest">{habit.name}</span>
                   </div>
-                  <span className="text-xs font-display font-700" style={{ color: color.hex }}>
-                    {rate}%
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-mono font-700 uppercase tracking-widest text-amber/40 mb-0.5">YIELD</span>
+                    <span className="font-mono font-800 text-signal text-xs">
+                      {rate}%
+                    </span>
+                  </div>
                 </div>
 
                 {view === "week" ? (
-                  /* Week: 7 dot squares with day labels */
-                  <div className="flex gap-1.5">
+                  /* Oscilloscope Week */
+                  <div className="flex items-end h-16 gap-1 relative z-10">
                     {habit.weekLogs.map((log) => (
-                      <div key={log.date} className="flex-1 flex flex-col items-center gap-1">
+                      <div key={log.date} className="flex-1 flex flex-col items-center justify-end h-full gap-2">
                         <div
-                          className="w-full aspect-square rounded-md transition-all"
-                          style={
-                            !log.scheduled
-                              ? { background: "rgba(255,255,255,0.04)", opacity: 0.3 }
-                              : log.completed
-                              ? { background: color.hex }
-                              : { background: "rgba(255,255,255,0.08)" }
-                          }
+                          className="w-full transition-all duration-500 relative"
+                          style={{
+                            height: !log.scheduled ? '4px' : log.completed ? '100%' : '15%',
+                            background: !log.scheduled ? 'transparent' : log.completed ? 'var(--signal)' : 'var(--amber)',
+                            border: !log.scheduled ? '1px dashed rgba(255,176,0,0.3)' : 'none',
+                            boxShadow: log.completed ? '0 0 8px rgba(50,205,50,0.5)' : 'none'
+                          }}
                         />
-                        <span className="text-[9px] text-white/20">
-                          {format(parseISO(log.date), "E")[0]}
+                        <span className="text-[8px] font-mono font-700 text-amber/40 uppercase">
+                          {format(parseISO(log.date), "EEE")[0]}
                         </span>
                       </div>
                     ))}

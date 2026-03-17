@@ -1,26 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, DM_Sans } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "react-hot-toast";
 
-const syne = Syne({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-mono",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Synapse – Habit Tracker",
-  description: "Build habits. Stay consistent.",
+  title: "SYNAPSE // Terminal",
+  description: "System initialization.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -33,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#BDB7AB",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -46,9 +39,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${syne.variable} ${dmSans.variable} font-body bg-surface-0 text-white antialiased`}
+        className={`${jetbrainsMono.variable} font-mono bg-putty text-amber antialiased`}
       >
         <AuthProvider>
           {children}
@@ -56,11 +49,12 @@ export default function RootLayout({
             position="top-center"
             toastOptions={{
               style: {
-                background: "#1a1a1a",
-                color: "#fff",
-                border: "1px solid #2a2a2a",
-                borderRadius: "12px",
-                fontFamily: "var(--font-body), sans-serif",
+                background: "#1A1B1E",
+                color: "#FFB000",
+                border: "2px solid #8A857A",
+                borderRadius: "0px",
+                fontFamily: "var(--font-mono), monospace",
+                textShadow: "0 0 5px rgba(255, 176, 0, 0.6)",
               },
             }}
           />

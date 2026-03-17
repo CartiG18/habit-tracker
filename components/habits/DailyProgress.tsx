@@ -8,66 +8,51 @@ interface Props {
 
 export default function DailyProgress({ completed, total, allDone }: Props) {
   const pct = total > 0 ? completed / total : 0;
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - pct * circumference;
+  const bars = 20;
+  const activeBars = Math.round(pct * bars);
 
   return (
-    <div className="glass rounded-2xl p-5 flex items-center gap-5">
-      {/* Ring */}
-      <div className="relative w-20 h-20 flex-shrink-0">
-        <svg width="80" height="80" className="absolute inset-0">
-          <circle
-            cx="40"
-            cy="40"
-            r={radius}
-            fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="5"
-          />
-          <circle
-            cx="40"
-            cy="40"
-            r={radius}
-            fill="none"
-            stroke={allDone ? "#4ade80" : "#22c55e"}
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className="progress-ring"
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          {allDone ? (
-            <span className="text-2xl">🎉</span>
-          ) : (
-            <span className="font-display font-800 text-white text-lg">
-              {Math.round(pct * 100)}
-              <span className="text-xs text-white/40">%</span>
-            </span>
-          )}
-        </div>
+    <div className="p-4 bg-basalt-light border border-amber/30 flex items-center gap-6 relative overflow-hidden">
+      {/* Background grid */}
+      <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
+
+      {/* Bar Chart / Oscilloscope feeling */}
+      <div className="flex gap-1 items-end h-16 w-32 flex-shrink-0 z-10 border-b border-amber/50 pb-1">
+        {Array.from({ length: bars }).map((_, i) => {
+          const isActive = i < activeBars;
+          return (
+            <div
+              key={i}
+              className="flex-1 w-full rounded-sm transition-all duration-300"
+              style={{
+                height: isActive ? `${Math.max(10, Math.random() * 80 + 20)}%` : '4px',
+                background: isActive ? (allDone ? "var(--signal)" : "var(--amber)") : "var(--basalt)",
+                border: isActive ? "none" : "1px solid rgba(255,176,0,0.3)",
+                boxShadow: isActive ? `0 0 5px ${allDone ? "rgba(50,205,50,0.6)" : "rgba(255,176,0,0.6)"}` : "none",
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Text */}
-      <div>
+      <div className="flex-1 z-10">
         {allDone ? (
           <>
-            <p className="font-display font-700 text-white text-lg">
-              All done! 🔥
+            <p className="font-mono font-800 text-signal text-lg uppercase tracking-widest text-signal">
+              SYS.OPTIMAL
             </p>
-            <p className="text-white/40 text-sm mt-0.5">
-              You locked in today. Keep it up!
+            <p className="text-signal/60 text-[10px] font-mono uppercase tracking-widest mt-1">
+              ALL PROCESSES COMPLETE
             </p>
           </>
         ) : (
           <>
-            <p className="font-display font-700 text-white text-lg">
-              {completed} / {total} complete
+            <p className="font-mono font-700 text-amber text-lg uppercase text-glow">
+              LOAD: {Math.round(pct * 100)}%
             </p>
-            <p className="text-white/40 text-sm mt-0.5">
-              {total - completed} habit{total - completed !== 1 ? "s" : ""} remaining today
+            <p className="text-amber/60 text-[10px] font-mono uppercase tracking-widest mt-1">
+              {total - completed} PENDING PROCESSES
             </p>
           </>
         )}
