@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
+import { useCopy } from "@/lib/copy";
 import BottomNav from "@/components/layout/BottomNav";
 
 const BOOT_TEXT = [
@@ -20,6 +22,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
+  const { isRetro } = useTheme();
+  const copy = useCopy();
   const router = useRouter();
   const [booting, setBooting] = useState(true);
 
@@ -31,51 +35,64 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && user) {
-      const timer = setTimeout(() => setBooting(false), 2000); // 2 second boot
+      const timer = setTimeout(() => setBooting(false), isRetro ? 2000 : 300); 
       return () => clearTimeout(timer);
     }
-  }, [loading, user]);
+  }, [loading, user, isRetro]);
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-basalt flex items-center justify-center crt-screen p-8">
-        <div className="w-full max-w-lg font-mono text-amber text-xs space-y-1">
-          <p className="animate-pulse">AWAITING UPLINK...</p>
+      <div className="min-h-screen bg-th-screen flex items-center justify-center p-8">
+        <div className="w-full max-w-lg font-theme text-th-primary text-xs space-y-1">
+          <p className="animate-pulse uppercase tracking-widest">{copy.bootLoading}</p>
         </div>
       </div>
     );
   }
 
   if (booting) {
-    return (
-      <div className="min-h-screen bg-putty flex items-center justify-center p-2 sm:p-4">
-        <div className="w-full h-full max-w-lg bg-basalt crt-screen p-6 flex flex-col justify-end pb-24 border-[12px] border-putty-dark shadow-bezel-inner rounded-xl relative overflow-hidden">
-          <div className="scanline-overlay"></div>
-          <div className="font-mono text-amber text-sm font-700 space-y-2 text-glow flex flex-col justify-end overflow-hidden h-full">
-            <div className="animate-boot-scroll overflow-hidden flex flex-col justify-end">
-              {BOOT_TEXT.map((txt, i) => (
-                <p key={i} className="mb-2">{`> ${txt}`}</p>
-              ))}
-              <p className="animate-pulse">{`> _`}</p>
+    if (isRetro) {
+      return (
+        <div className="min-h-screen bg-th-surface flex items-center justify-center p-2 sm:p-4">
+          <div className="w-full h-full max-w-lg bg-th-screen crt-screen p-6 flex flex-col justify-end pb-24 border-[12px] border-th-surface-dark shadow-bezel-inner rounded-xl relative overflow-hidden">
+            <div className="scanline-overlay"></div>
+            <div className="font-theme text-th-primary text-sm font-700 space-y-2 text-glow flex flex-col justify-end overflow-hidden h-full">
+              <div className="animate-boot-scroll overflow-hidden flex flex-col justify-end uppercase tracking-widest">
+                {BOOT_TEXT.map((txt, i) => (
+                  <p key={i} className="mb-2">{`> ${txt}`}</p>
+                ))}
+                <p className="animate-pulse">{`> _`}</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-2 sm:p-4">
+           {/* Empty shell for smooth fade-in */}
+        </div>
+      );
+    }
   }
 
-  return (
-    <div className="min-h-screen bg-putty flex items-center justify-center p-2 sm:p-4">
-      {/* Outer physical bezel */}
-      <div className="w-full h-full max-w-lg mech-panel rounded-2xl p-2 sm:p-4 flex flex-col relative">
-        {/* Decorative hardware screws */}
-        <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-putty-dark shadow-mech-in" />
-        <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-putty-dark shadow-mech-in" />
-        <div className="absolute bottom-2 left-2 w-3 h-3 rounded-full bg-putty-dark shadow-mech-in" />
-        <div className="absolute bottom-2 right-2 w-3 h-3 rounded-full bg-putty-dark shadow-mech-in" />
+  return isRetro ? (
+    <RetroShell>{children}</RetroShell>
+  ) : (
+    <SoftShell>{children}</SoftShell>
+  );
+}
 
-        {/* CRT Screen Area */}
-        <div className="flex-1 bg-basalt crt-screen rounded-xl border-[8px] border-putty-dark shadow-bezel-inner relative overflow-hidden flex flex-col">
+function RetroShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full h-full max-w-lg mech-panel rounded-2xl p-2 sm:p-4 flex flex-col relative">
+        <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-th-surface-dark shadow-th-inset" />
+        <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-th-surface-dark shadow-th-inset" />
+        <div className="absolute bottom-2 left-2 w-3 h-3 rounded-full bg-th-surface-dark shadow-th-inset" />
+        <div className="absolute bottom-2 right-2 w-3 h-3 rounded-full bg-th-surface-dark shadow-th-inset" />
+
+        <div className="flex-1 bg-th-screen crt-screen rounded-xl border-[8px] border-th-surface-dark shadow-bezel-inner relative overflow-hidden flex flex-col">
           <div className="scanline-overlay"></div>
           <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
           
@@ -85,6 +102,19 @@ export default function DashboardLayout({
           
           <BottomNav />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SoftShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center sm:p-4">
+      <div className="w-full h-full max-w-lg flex flex-col relative animate-soft-enter">
+        <main className="flex-1 overflow-y-auto pb-24 relative bg-th-screen sm:rounded-3xl sm:border border-th-surface-dark sm:shadow-neu-out">
+          {children}
+        </main>
+        <BottomNav />
       </div>
     </div>
   );

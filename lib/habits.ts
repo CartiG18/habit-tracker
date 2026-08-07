@@ -108,19 +108,60 @@ export async function getUserHabits(userId: string): Promise<Habit[]> {
 
 // ─── Logs ─────────────────────────────────────────────────────────────────────
 
-export async function toggleHabitLog(userId: string, habitId: string, date: string): Promise<HabitLog> {
-  const logId = `${userId}_${habitId}_${date}`;
+export async function toggleHabitLog(userId: string, habit: Habit, date: string): Promise<HabitLog> {
+  const logId = `${userId}_${habit.id}_${date}`;
   const logRef = doc(db, "habitLogs", logId);
   const existing = await getDoc(logRef);
   if (existing.exists() && existing.data().completed) {
-    const log: HabitLog = { id: logId, habitId, userId, date, completed: false };
+    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: false, completedSubtasks: [] };
     await setDoc(logRef, log);
     return log;
   } else {
-    const log: HabitLog = { id: logId, habitId, userId, date, completed: true, completedAt: new Date().toISOString() };
+    const allSubtasks = habit.subtasks?.map(s => s.id) || [];
+    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: true, completedAt: new Date().toISOString(), completedSubtasks: allSubtasks };
     await setDoc(logRef, log);
     return log;
   }
+}
+
+export async function toggleSubtaskLog(userId: string, habit: Habit, date: string, subtaskId: string): Promise<HabitLog> {
+  const logId = `${userId}_${habit.id}_${date}`;
+  const logRef = doc(db, "habitLogs", logId);
+  const existing = await getDoc(logRef);
+  
+  let completedSubtasks: string[] = [];
+  let note = "";
+  
+  if (existing.exists()) {
+    const data = existing.data() as HabitLog;
+    completedSubtasks = data.completedSubtasks || [];
+    note = data.note || "";
+    
+    if (completedSubtasks.includes(subtaskId)) {
+      completedSubtasks = completedSubtasks.filter(id => id !== subtaskId);
+    } else {
+      completedSubtasks.push(subtaskId);
+    }
+  } else {
+    completedSubtasks = [subtaskId];
+  }
+  
+  const allSubtasksLen = habit.subtasks?.length || 0;
+  const completed = allSubtasksLen > 0 && completedSubtasks.length === allSubtasksLen;
+  
+  const log: HabitLog = { 
+    id: logId, 
+    habitId: habit.id, 
+    userId, 
+    date, 
+    completed, 
+    completedSubtasks,
+    ...(note ? { note } : {}),
+    ...(completed ? { completedAt: new Date().toISOString() } : {})
+  };
+  
+  await setDoc(logRef, log);
+  return log;
 }
 
 export async function updateHabitNote(userId: string, habitId: string, date: string, note: string): Promise<void> {
@@ -231,14 +272,19 @@ export async function getHabitWithStats(userId: string, habit: Habit): Promise<H
     };
   }
   const { current, longest } = calculateStreak(habit, logs);
-  const logMap = new Map(logs.map((l) => [l.date, l.completed]));
+  const logMap = new Map(logs.map((l) => [l.date, l]));
 
   const weekDays = eachDayOfInterval({ start: parseISO(sevenDaysAgo), end: parseISO(today) });
-  const weekLogs: DayLog[] = weekDays.map((day) => ({
-    date: format(day, "yyyy-MM-dd"),
-    completed: logMap.get(format(day, "yyyy-MM-dd")) ?? false,
-    scheduled: isScheduledDay(habit.schedule, day),
-  }));
+  const weekLogs: DayLog[] = weekDays.map((day) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    const log = logMap.get(dateStr);
+    return {
+      date: dateStr,
+      completed: log?.completed ?? false,
+      scheduled: isScheduledDay(habit.schedule, day),
+      completedSubtasks: log?.completedSubtasks || [],
+    };
+  });
 
   let completionRate = 0;
   let periodCompletions: number | undefined;
@@ -253,14 +299,14 @@ export async function getHabitWithStats(userId: string, habit: Habit): Promise<H
   : 1;
     const pStart = isWeekly ? startOfWeek(new Date(), { weekStartsOn: 1 }) : startOfMonth(new Date());
     const periodDays = eachDayOfInterval({ start: pStart, end: new Date() });
-    const completions = periodDays.filter((d) => logMap.get(format(d, "yyyy-MM-dd"))).length;
+    const completions = periodDays.filter((d) => logMap.get(format(d, "yyyy-MM-dd"))?.completed).length;
     periodCompletions = completions;
     periodTarget = target;
     completionRate = Math.min(completions / target, 1);
   } else {
     const last30 = Array.from({ length: 30 }, (_, i) => subDays(new Date(), i));
     const scheduled = last30.filter((d) => isScheduledDay(habit.schedule, d));
-    const done = scheduled.filter((d) => logMap.get(format(d, "yyyy-MM-dd")) ?? false).length;
+    const done = scheduled.filter((d) => logMap.get(format(d, "yyyy-MM-dd"))?.completed ?? false).length;
     completionRate = scheduled.length > 0 ? done / scheduled.length : 0;
   }
 
@@ -269,7 +315,8 @@ export async function getHabitWithStats(userId: string, habit: Habit): Promise<H
     currentStreak: current,
     longestStreak: longest,
     completionRate,
-    todayCompleted: logMap.get(today) ?? false,
+    todayCompleted: logMap.get(today)?.completed ?? false,
+    todayCompletedSubtasks: logMap.get(today)?.completedSubtasks || [],
     weekLogs,
     periodCompletions,
     periodTarget,

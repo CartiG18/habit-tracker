@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useHabits } from "@/hooks/useHabits";
 import { HABIT_COLORS, DAYS, EMOJI_OPTIONS, cn } from "@/lib/utils";
-import { HabitColor, DayOfWeek, HabitSchedule, Habit } from "@/types";
+import { HabitColor, DayOfWeek, HabitSchedule, Habit, Subtask } from "@/types";
+import { useTheme } from "@/lib/theme-context";
+import { useCopy } from "@/lib/copy";
 
 interface Props {
   open: boolean;
@@ -17,12 +19,15 @@ type ScheduleType = "weekly" | "monthly_dates" | "frequency_week" | "frequency_m
 
 export default function EditHabitModal({ open, onClose, habit }: Props) {
   const { editHabit } = useHabits();
+  const { isRetro } = useTheme();
+  const copy = useCopy();
 
   const [name, setName] = useState(habit.name);
   const [description, setDescription] = useState(habit.description ?? "");
   const [emoji, setEmoji] = useState(habit.emoji);
   const [color, setColor] = useState<HabitColor>(habit.color);
   const [scheduleType, setScheduleType] = useState<ScheduleType>(habit.schedule.type);
+  const [subtasks, setSubtasks] = useState<Subtask[]>(habit.subtasks || []);
 
   // weekly
   const [selectedDays, setSelectedDays] = useState<DayOfWeek[]>(
@@ -49,6 +54,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
     setEmoji(habit.emoji);
     setColor(habit.color);
     setScheduleType(habit.schedule.type);
+    setSubtasks(habit.subtasks || []);
     
     if (habit.schedule.type === "weekly") {
       setSelectedDays(habit.schedule.days);
@@ -95,12 +101,14 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
   async function handleSave() {
     if (!isValid()) return;
     setSaving(true);
+    const finalSubtasks = subtasks.filter(st => st.title.trim() !== "");
     await editHabit(habit.id, { 
       name: name.trim(), 
       description, 
       emoji, 
       color, 
-      schedule: buildSchedule() 
+      schedule: buildSchedule(),
+      subtasks: finalSubtasks
     });
     setSaving(false);
     onClose();
@@ -109,25 +117,49 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
   if (!open) return null;
 
   const SCHEDULE_TABS: { value: ScheduleType; label: string }[] = [
-    { value: "weekly", label: "DAYS" },
-    { value: "monthly_dates", label: "DATES" },
-    { value: "frequency_week", label: "FRQ/W" },
-    { value: "frequency_month", label: "FRQ/M" },
+    { value: "weekly", label: copy.scheduleDays },
+    { value: "monthly_dates", label: copy.scheduleDates },
+    { value: "frequency_week", label: copy.scheduleFreqWeek },
+    { value: "frequency_month", label: copy.scheduleFreqMonth },
   ];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
-      <div className="relative w-full max-w-lg bg-putty border-4 border-putty-dark rounded-xl shadow-mech-out p-3 animate-slide-up">
-        <div className="bg-basalt crt-screen rounded-lg border-[6px] border-putty-dark shadow-bezel-inner relative overflow-hidden flex flex-col max-h-[85vh]">
-          <div className="scanline-overlay"></div>
-          <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
+      <div className={cn(
+        "relative w-full max-w-lg transition-all animate-slide-up",
+        isRetro 
+          ? "bg-th-surface border-4 border-th-surface-dark rounded-xl shadow-mech-out p-3"
+          : "bg-th-screen border border-th-surface-dark/20 rounded-3xl shadow-neu-out p-1"
+      )}>
+        <div className={cn(
+          "relative overflow-hidden flex flex-col max-h-[85vh]",
+          isRetro 
+            ? "bg-th-screen crt-screen rounded-lg border-[6px] border-th-surface-dark shadow-bezel-inner"
+            : "bg-th-screen rounded-3xl"
+        )}>
+          {isRetro && (
+            <>
+              <div className="scanline-overlay"></div>
+              <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
+            </>
+          )}
 
-          <div className="flex-1 overflow-y-auto z-20 relative p-6">
-            <div className="flex items-center justify-between mb-6 border-b border-amber/30 pb-4">
-              <h2 className="font-mono text-xl font-800 text-amber text-glow uppercase tracking-wide">RECONFIGURE_PROCESS</h2>
-              <button onClick={onClose} className="p-2 border border-amber/30 text-amber/60 hover:text-amber hover:bg-amber/10 transition-colors">
+          <div className={cn("flex-1 overflow-y-auto z-20 relative", isRetro ? "p-6" : "p-8")}>
+            <div className={cn("flex items-center justify-between mb-6 pb-4", isRetro ? "border-b border-th-primary/30" : "")}>
+              <h2 className={cn(
+                "font-theme text-xl transition-colors",
+                isRetro ? "font-800 text-th-primary text-glow uppercase tracking-wide" : "font-700 text-th-text"
+              )}>
+                {copy.editHabitTitle}
+              </h2>
+              <button onClick={onClose} className={cn(
+                "p-2 transition-colors rounded-full",
+                isRetro 
+                  ? "border border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:bg-th-primary/10 rounded-none"
+                  : "bg-th-surface-light text-th-text-secondary hover:bg-th-surface-dark/20"
+              )}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -135,43 +167,69 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
             <div className="space-y-6">
               {/* Emoji */}
               <div>
-                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">SYS.ICON</label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {EMOJI_OPTIONS.map((e) => (
-                    <button key={e} onClick={() => setEmoji(e)}
-                      className={cn("w-10 h-10 border text-lg transition-all duration-200 flex items-center justify-center",
-                        emoji === e ? "bg-amber/20 border-amber shadow-[inset_0_0_10px_rgba(255,176,0,0.5)]" : "bg-basalt-light border-amber/30 hover:border-amber/60"
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                  {copy.labelIcon}
+                </label>
+                <div className="mt-2">
+                  <div className={cn("inline-flex items-center justify-center w-16 h-16 text-3xl transition-all duration-200",
+                        isRetro 
+                          ? "bg-th-screen-light/30 border-2 border-th-primary shadow-[inset_0_0_10px_rgba(var(--th-primary),0.2)]"
+                          : "bg-th-surface rounded-2xl shadow-neu-in border border-th-surface-dark/20"
                       )}>
-                      {e}
-                    </button>
-                  ))}
+                    <input
+                      type="text"
+                      value={emoji}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val.length > 0) {
+                          setEmoji(Array.from(val).pop() || "");
+                        } else {
+                          setEmoji("");
+                        }
+                      }}
+                      className={cn("w-full h-full bg-transparent text-center outline-none", isRetro ? "text-th-primary text-glow" : "text-th-text")}
+                      placeholder="✨"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Name */}
               <div>
-                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">PROCESS_ID</label>
-                <div className="flex items-center mt-2 border-b-2 border-amber/50 bg-basalt-light/30">
-                  <span className="text-amber/40 font-mono px-2">{`>`}</span>
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ENTER IDENTIFIER..."
-                    className="w-full py-3 text-amber placeholder-amber/20 font-mono text-lg outline-none bg-transparent uppercase focus:bg-amber/5 transition-colors" />
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                  {copy.labelName}
+                </label>
+                <div className={cn("flex items-center mt-2", 
+                  isRetro 
+                    ? "border-b-2 border-th-primary/50 bg-th-screen-light/30"
+                    : "bg-th-surface rounded-xl border border-th-surface-dark/20 shadow-neu-in px-3"
+                )}>
+                  {isRetro && <span className="text-th-primary/40 font-theme px-2">{`>`}</span>}
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder={copy.inputPlaceholder}
+                    className={cn("w-full py-3 font-theme text-lg outline-none bg-transparent transition-colors placeholder-opacity-50",
+                      isRetro ? "text-th-primary placeholder-th-primary/20 uppercase focus:bg-th-primary/5" : "text-th-text placeholder-th-text-secondary"
+                    )} />
                 </div>
               </div>
 
               {/* Color */}
               <div>
-                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">LED_COLOR</label>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                  {copy.labelColor}
+                </label>
                 <div className="flex gap-2.5 mt-3">
                   {COLOR_OPTIONS.map((c) => (
                     <button
                       key={c}
                       onClick={() => setColor(c)}
-                      className={cn("w-8 h-8 rounded-sm transition-all duration-300 border-2",
-                        color === c ? "border-amber shadow-[0_0_8px_currentColor]" : "border-basalt opacity-50 hover:opacity-100"
+                      className={cn("w-8 h-8 transition-all duration-300",
+                        isRetro 
+                          ? ["rounded-sm border-2", color === c ? "border-th-primary shadow-[0_0_8px_currentColor]" : "border-th-screen opacity-50 hover:opacity-100"]
+                          : ["rounded-full", color === c ? "shadow-[0_0_0_2px_rgb(var(--th-screen)),0_0_0_4px_currentColor]" : "opacity-50 hover:opacity-100 hover:scale-110"]
                       )}
                       style={{
                         background: HABIT_COLORS[c].hex,
-                        color: HABIT_COLORS[c].hex,
+                        color: HABIT_COLORS[c].hex, 
                       }}
                     />
                   ))}
@@ -179,13 +237,19 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
               </div>
 
               {/* Schedule */}
-              <div className="pt-4 border-t border-amber/20">
-                <label className="text-amber/60 text-[10px] font-mono font-700 uppercase tracking-widest">EXECUTION_PARAMS</label>
-                <div className="grid grid-cols-4 gap-1 mt-3 bg-basalt-light/50 border border-amber/30 p-1">
+              <div className={cn("pt-4", isRetro ? "border-t border-th-primary/20" : "")}>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                  {copy.labelSchedule}
+                </label>
+                <div className={cn("grid grid-cols-4 gap-1 mt-3", 
+                  isRetro ? "bg-th-screen-light/50 border border-th-primary/30 p-1" : "bg-th-surface p-1 rounded-xl shadow-neu-in"
+                )}>
                   {SCHEDULE_TABS.map((tab) => (
                     <button key={tab.value} onClick={() => setScheduleType(tab.value)}
-                      className={cn("py-2 px-1 text-[10px] font-mono font-700 transition-all",
-                        scheduleType === tab.value ? "bg-amber text-basalt shadow-[0_0_5px_rgba(255,176,0,0.5)]" : "text-amber/50 hover:bg-amber/10"
+                      className={cn("py-2 px-1 font-theme transition-all",
+                        isRetro 
+                          ? ["text-[10px] font-700", scheduleType === tab.value ? "bg-th-primary text-th-btn-text shadow-[0_0_5px_rgba(var(--th-primary),0.5)]" : "text-th-primary/50 hover:bg-th-primary/10"]
+                          : ["text-xs font-500 rounded-lg", scheduleType === tab.value ? "bg-th-screen shadow-neu-out text-th-text" : "text-th-text-secondary hover:text-th-text"]
                       )}>
                       {tab.label}
                     </button>
@@ -197,8 +261,10 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                   <div className="mt-4 flex gap-1">
                     {DAYS.map(({ short, value }) => (
                       <button key={value} onClick={() => toggleDay(value)}
-                        className={cn("flex-1 py-3 transition-all duration-200 font-mono text-[9px] font-700 border",
-                          selectedDays.includes(value) ? "bg-amber/20 text-amber border-amber shadow-[inset_0_0_8px_rgba(255,176,0,0.4)]" : "bg-basalt-light border-amber/30 text-amber/40 hover:text-amber/80"
+                        className={cn("flex-1 py-3 transition-all duration-200 font-theme font-700",
+                          isRetro 
+                            ? ["text-[9px] border", selectedDays.includes(value) ? "bg-th-primary/20 text-th-primary border-th-primary shadow-[inset_0_0_8px_rgba(var(--th-primary),0.4)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/40 hover:text-th-primary/80"]
+                            : ["text-xs rounded-xl", selectedDays.includes(value) ? "bg-th-primary text-th-btn-text shadow-th-raised" : "bg-th-surface text-th-text-secondary hover:bg-th-surface-dark/20"]
                         )}>
                         {short}
                       </button>
@@ -208,29 +274,84 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
 
                 {/* Frequency */}
                 {(scheduleType === "frequency_week" || scheduleType === "frequency_month") && (
-                  <div className="mt-4 flex items-center justify-center gap-6 bg-basalt-light/30 p-4 border border-amber/30">
+                  <div className={cn("mt-4 flex items-center justify-center gap-6",
+                    isRetro ? "bg-th-screen-light/30 p-4 border border-th-primary/30" : "bg-th-surface p-4 rounded-xl"
+                  )}>
                     <button onClick={() => setFreqCount((n) => Math.max(1, n - 1))}
-                      className="w-10 h-10 border border-amber text-amber hover:bg-amber/20 transition-colors flex items-center justify-center font-mono font-800 text-xl">
+                      className={cn("w-10 h-10 transition-colors flex items-center justify-center font-theme text-xl",
+                        isRetro ? "border border-th-primary text-th-primary hover:bg-th-primary/20 font-800" : "bg-th-screen text-th-text rounded-full shadow-neu-out hover:shadow-neu-in font-500"
+                      )}>
                       −
                     </button>
                     <div className="text-center min-w-[80px]">
-                      <span className="font-mono font-800 text-3xl text-amber text-glow leading-none">{freqCount}</span>
-                      <p className="text-amber/50 text-[9px] font-mono uppercase tracking-widest mt-1">
-                        TARGET
+                      <span className={cn("font-theme leading-none", 
+                        isRetro ? "font-800 text-3xl text-th-primary text-glow" : "font-700 text-3xl text-th-text"
+                      )}>{freqCount}</span>
+                      <p className={cn("font-theme mt-1",
+                        isRetro ? "text-th-primary/50 text-[9px] uppercase tracking-widest" : "text-th-text-secondary text-xs"
+                      )}>
+                        {copy.targetLabel}
                       </p>
                     </div>
                     <button onClick={() => setFreqCount((n) => Math.min(scheduleType === "frequency_week" ? 7 : 31, n + 1))}
-                      className="w-10 h-10 border border-amber text-amber hover:bg-amber/20 transition-colors flex items-center justify-center font-mono font-800 text-xl">
+                      className={cn("w-10 h-10 transition-colors flex items-center justify-center font-theme text-xl",
+                        isRetro ? "border border-th-primary text-th-primary hover:bg-th-primary/20 font-800" : "bg-th-screen text-th-text rounded-full shadow-neu-out hover:shadow-neu-in font-500"
+                      )}>
                       +
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Subtasks */}
+              <div className={cn("pt-4", isRetro ? "border-t border-th-primary/20" : "")}>
+                <div className="flex justify-between items-center mb-2">
+                  <label className={cn("font-theme transition-colors", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                    {copy.dataPrefix || "SUBTASKS"}
+                  </label>
+                  <button onClick={() => setSubtasks(s => [...s, { id: crypto.randomUUID(), title: '' }])}
+                    className={cn("transition-colors font-theme", 
+                      isRetro ? "text-[10px] font-700 text-th-primary hover:text-th-primary/80 uppercase tracking-widest" : "text-sm text-th-primary font-500 hover:text-th-primary-dim"
+                    )}>
+                    + ADD SUBTASK
+                  </button>
+                </div>
+                
+                {subtasks.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {subtasks.map((st, i) => (
+                      <div key={st.id} className={cn("flex items-center gap-2", 
+                        isRetro ? "border-b border-th-primary/30 bg-th-screen-light/20 p-2" : "bg-th-surface rounded-xl border border-th-surface-dark/10 shadow-neu-in p-1 pr-2"
+                      )}>
+                        {isRetro && <span className="text-th-primary/40 font-theme text-xs ml-1">{i+1}.</span>}
+                        <input 
+                          value={st.title}
+                          onChange={e => setSubtasks(s => s.map(x => x.id === st.id ? { ...x, title: e.target.value } : x))}
+                          placeholder="Subtask description..."
+                          className={cn("flex-1 bg-transparent outline-none font-theme py-1 px-2 transition-colors",
+                            isRetro ? "text-th-primary text-sm placeholder-th-primary/20 uppercase" : "text-th-text text-sm placeholder-th-text-secondary"
+                          )}
+                        />
+                        <button onClick={() => setSubtasks(s => s.filter(x => x.id !== st.id))}
+                          className={cn("p-1.5 transition-colors", 
+                            isRetro ? "text-red-500/60 hover:text-red-500 hover:bg-red-500/10" : "text-th-text-secondary hover:text-red-500 hover:bg-red-50 rounded-full"
+                          )}>
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
 
             <button onClick={handleSave} disabled={!isValid() || saving}
-              className="w-full mt-8 bg-amber text-basalt hover:bg-amber/90 disabled:opacity-40 disabled:bg-amber/20 disabled:text-amber font-mono font-800 uppercase tracking-[0.2em] py-4 transition-all duration-300 shadow-[0_0_15px_rgba(255,176,0,0.4)]">
-              {saving ? "UPLOADING..." : "UPDATE_SEQUENCE"}
+              className={cn("w-full mt-8 py-4 transition-all duration-300 font-theme disabled:opacity-40",
+                isRetro 
+                  ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(var(--th-primary),0.4)]"
+                  : "bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
+              )}>
+              {saving ? copy.savingText : copy.updateButton}
             </button>
           </div>
         </div>

@@ -10,14 +10,17 @@ import {
   updateHabit,
   archiveHabit,
   updateHabitNote,
+  toggleSubtaskLog,
 } from "@/lib/habits";
 import { useAuth } from "@/lib/auth-context";
 import { Habit, HabitWithStats, HabitLog } from "@/types";
 import { getTodayString } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { useCopy } from "@/lib/copy";
 
 export function useHabits(selectedDate: string = getTodayString()) {
   const { user } = useAuth();
+  const copy = useCopy();
   const [habits, setHabits] = useState<HabitWithStats[]>([]);
   const [dateLogs, setDateLogs] = useState<Map<string, HabitLog>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -36,12 +39,16 @@ export function useHabits(selectedDate: string = getTodayString()) {
       setHabits((prev) => {
         // Create a map of existing completion statuses from the previous state
         // to avoid "jumping" when habits list refreshes but logs haven't yet
-        const logMap = new Map(prev.map(h => [h.id, h.todayCompleted]));
+        const logMap = new Map(prev.map(h => [h.id, { todayCompleted: h.todayCompleted, todayCompletedSubtasks: h.todayCompletedSubtasks }]));
         
-        return enriched.map(h => ({
-          ...h,
-          todayCompleted: logMap.has(h.id) ? logMap.get(h.id)! : h.todayCompleted
-        }));
+        return enriched.map(h => {
+          const existing = logMap.get(h.id);
+          return {
+            ...h,
+            todayCompleted: existing ? existing.todayCompleted : h.todayCompleted,
+            todayCompletedSubtasks: existing ? existing.todayCompletedSubtasks : h.todayCompletedSubtasks
+          };
+        });
       });
       setLoading(false);
     });
@@ -66,22 +73,36 @@ export function useHabits(selectedDate: string = getTodayString()) {
       
       // Update the 'todayCompleted' (current view) status in the habits list
       setHabits((prev) =>
-        prev.map((h) => ({
-          ...h,
-          todayCompleted: logMap.get(h.id)?.completed ?? false,
-        }))
+        prev.map((h) => {
+          const log = logMap.get(h.id);
+          return {
+            ...h,
+            todayCompleted: log?.completed ?? false,
+            todayCompletedSubtasks: log?.completedSubtasks || [],
+          };
+        })
       );
     });
     return unsubscribe;
   }, [user, selectedDate]);
 
-  const toggle = useCallback(async (habitId: string, date: string = selectedDate) => {
+  const toggle = useCallback(async (habit: Habit, date: string = selectedDate) => {
     if (!user) return;
     try {
-      await toggleHabitLog(user.uid, habitId, date);
+      await toggleHabitLog(user.uid, habit, date);
     } catch (err: any) {
       console.error("Toggle error:", err);
       toast.error(err.message ?? "Failed to update habit");
+    }
+  }, [user, selectedDate]);
+
+  const toggleSubtask = useCallback(async (habit: Habit, subtaskId: string, date: string = selectedDate) => {
+    if (!user) return;
+    try {
+      await toggleSubtaskLog(user.uid, habit, date, subtaskId);
+    } catch (err: any) {
+      console.error("Toggle subtask error:", err);
+      toast.error(err.message ?? "Failed to update subtask");
     }
   }, [user, selectedDate]);
 
@@ -93,18 +114,18 @@ export function useHabits(selectedDate: string = getTodayString()) {
   const addHabit = useCallback(async (data: Omit<Habit, "id" | "userId" | "createdAt" | "order">) => {
     if (!user) return;
     await createHabit(user.uid, data);
-    toast.success("Habit created!");
-  }, [user]);
+    toast.success(copy.toastCreated);
+  }, [user, copy]);
 
   const editHabit = useCallback(async (habitId: string, data: Partial<Habit>) => {
     await updateHabit(habitId, data);
-    toast.success("Habit updated!");
-  }, []);
+    toast.success(copy.toastUpdated);
+  }, [copy]);
 
   const removeHabit = useCallback(async (habitId: string) => {
     await archiveHabit(habitId);
-    toast.success("Habit archived");
-  }, []);
+    toast.success(copy.toastArchived);
+  }, [copy]);
 
-  return { habits, dateLogs, loading, toggle, addNote, addHabit, editHabit, removeHabit };
+  return { habits, dateLogs, loading, toggle, toggleSubtask, addNote, addHabit, editHabit, removeHabit };
 }

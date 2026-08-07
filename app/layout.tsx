@@ -1,14 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Roboto } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
-import { Toaster } from "react-hot-toast";
+import { ThemeProvider } from "@/lib/theme-context";
+import { ThemeAwareToaster } from "@/components/layout/ThemeAwareToaster";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
   weight: ["400", "500", "700", "800"],
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -41,23 +49,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${jetbrainsMono.variable} font-mono bg-putty text-amber antialiased`}
+        className={`${jetbrainsMono.variable} ${roboto.variable} font-theme bg-th-surface text-th-primary antialiased`}
       >
         <AuthProvider>
-          {children}
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              style: {
-                background: "#1A1B1E",
-                color: "#FFB000",
-                border: "2px solid #8A857A",
-                borderRadius: "0px",
-                fontFamily: "var(--font-mono), monospace",
-                textShadow: "0 0 5px rgba(255, 176, 0, 0.6)",
-              },
-            }}
-          />
+          <ThemeProvider>
+            {children}
+            <ThemeAwareToaster />
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

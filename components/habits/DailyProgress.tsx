@@ -1,5 +1,9 @@
 "use client";
 
+import { useTheme } from "@/lib/theme-context";
+import { useCopy } from "@/lib/copy";
+import { cn } from "@/lib/utils";
+
 interface Props {
   completed: number;
   total: number;
@@ -7,52 +11,98 @@ interface Props {
 }
 
 export default function DailyProgress({ completed, total, allDone }: Props) {
+  const { isRetro } = useTheme();
+  const copy = useCopy();
   const pct = total > 0 ? completed / total : 0;
   const bars = 20;
   const activeBars = Math.round(pct * bars);
 
   return (
-    <div className="p-4 bg-basalt-light border border-amber/30 flex items-center gap-6 relative overflow-hidden">
-      {/* Background grid */}
-      <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
+    <div className={cn(
+      "p-4 flex items-center relative overflow-hidden transition-colors",
+      isRetro 
+        ? "bg-th-screen-light border border-th-primary/30 gap-6"
+        : "bg-th-screen border border-th-surface-dark/10 shadow-neu-out sm:rounded-2xl rounded-xl flex-col sm:flex-row gap-4"
+    )}>
+      {isRetro && (
+        <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
+      )}
 
-      {/* Bar Chart / Oscilloscope feeling */}
-      <div className="flex gap-1 items-end h-16 w-32 flex-shrink-0 z-10 border-b border-amber/50 pb-1">
-        {Array.from({ length: bars }).map((_, i) => {
-          const isActive = i < activeBars;
-          return (
-            <div
-              key={i}
-              className="flex-1 w-full rounded-sm transition-all duration-300"
-              style={{
-                height: isActive ? `${Math.max(10, Math.random() * 80 + 20)}%` : '4px',
-                background: isActive ? (allDone ? "var(--signal)" : "var(--amber)") : "var(--basalt)",
-                border: isActive ? "none" : "1px solid rgba(255,176,0,0.3)",
-                boxShadow: isActive ? `0 0 5px ${allDone ? "rgba(50,205,50,0.6)" : "rgba(255,176,0,0.6)"}` : "none",
-              }}
-            />
-          );
-        })}
-      </div>
+      {/* Progress Visualization */}
+      {isRetro ? (
+        /* Retro Oscilloscope */
+        <div className="flex gap-1 items-end h-16 w-32 flex-shrink-0 z-10 border-b border-th-primary/50 pb-1">
+          {Array.from({ length: bars }).map((_, i) => {
+            const isActive = i < activeBars;
+            return (
+              <div
+                key={i}
+                className="flex-1 w-full rounded-sm transition-all duration-300"
+                style={{
+                  height: isActive ? `${Math.max(10, Math.random() * 80 + 20)}%` : '4px',
+                  background: isActive ? (allDone ? "rgb(var(--th-success))" : "rgb(var(--th-primary))") : "rgb(var(--th-screen))",
+                  border: isActive ? "none" : "1px solid rgba(var(--th-primary), 0.3)",
+                  boxShadow: isActive ? `0 0 5px ${allDone ? "rgba(var(--th-success), 0.6)" : "rgba(var(--th-primary), 0.6)"}` : "none",
+                }}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        /* Soft Progress Bar */
+        <div className="w-full sm:w-48 h-3 bg-th-surface-dark/30 rounded-full overflow-hidden shadow-neu-in flex-shrink-0">
+          <div 
+            className="h-full rounded-full transition-all duration-1000 ease-out"
+            style={{ 
+              width: `${pct * 100}%`,
+              background: allDone ? "rgb(var(--th-success))" : "rgb(var(--th-primary))"
+            }}
+          />
+        </div>
+      )}
 
       {/* Text */}
-      <div className="flex-1 z-10">
+      <div className={cn(
+        "flex-1 z-10 w-full",
+        !isRetro && "flex flex-row sm:flex-col justify-between items-center sm:items-start"
+      )}>
         {allDone ? (
           <>
-            <p className="font-mono font-800 text-signal text-lg uppercase tracking-widest text-signal">
-              SYS.OPTIMAL
+            <p className={cn(
+              "transition-colors",
+              isRetro 
+                ? "font-theme font-800 text-th-success text-lg uppercase tracking-widest text-signal"
+                : "font-theme font-700 text-th-success text-lg"
+            )}>
+              {copy.allDone}
             </p>
-            <p className="text-signal/60 text-[10px] font-mono uppercase tracking-widest mt-1">
-              ALL PROCESSES COMPLETE
+            <p className={cn(
+              "transition-colors",
+              isRetro 
+                ? "text-th-success/60 text-[10px] font-theme uppercase tracking-widest mt-1"
+                : "text-th-text-secondary text-sm font-theme mt-0.5"
+            )}>
+              {copy.allDoneHint}
             </p>
           </>
         ) : (
           <>
-            <p className="font-mono font-700 text-amber text-lg uppercase text-glow">
-              LOAD: {Math.round(pct * 100)}%
+            <p className={cn(
+              "transition-colors",
+              isRetro 
+                ? "font-theme font-700 text-th-primary text-lg uppercase text-glow"
+                : "font-theme font-700 text-th-text text-lg"
+            )}>
+              {copy.loadPrefix} {isRetro ? "" : `${Math.round(pct * 100)}%`}
+              {isRetro && `${Math.round(pct * 100)}%`}
             </p>
-            <p className="text-amber/60 text-[10px] font-mono uppercase tracking-widest mt-1">
-              {total - completed} PENDING PROCESSES
+            <p className={cn(
+              "transition-colors",
+              isRetro 
+                ? "text-th-primary/60 text-[10px] font-theme uppercase tracking-widest mt-1"
+                : "text-th-text-secondary text-sm font-theme mt-0.5"
+            )}>
+              {Number((total - completed).toFixed(1))} {copy.pendingSuffix}
             </p>
           </>
         )}

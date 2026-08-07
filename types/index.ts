@@ -1,3 +1,9 @@
+// ─── Theme ───────────────────────────────────────────────────────────────────
+
+export type ThemeMode = "retro" | "soft";
+
+// ─── Habit Colors ────────────────────────────────────────────────────────────
+
 export type HabitColor =
   | "green"
   | "blue"
@@ -44,6 +50,11 @@ export type HabitSchedule =
 
 // ─── Core Models ─────────────────────────────────────────────────────────────
 
+export interface Subtask {
+  id: string;
+  title: string;
+}
+
 export interface Habit {
   id: string;
   userId: string;
@@ -55,6 +66,7 @@ export interface Habit {
   createdAt: string;
   archivedAt?: string;
   order: number;
+  subtasks?: Subtask[];
 }
 
 export interface HabitLog {
@@ -65,12 +77,14 @@ export interface HabitLog {
   completed: boolean;
   note?: string;
   completedAt?: string;
+  completedSubtasks?: string[]; // Array of subtask IDs
 }
 
 export interface DayLog {
   date: string;
   completed: boolean;
   scheduled: boolean;
+  completedSubtasks?: string[];
 }
 
 export interface HabitWithStats extends Habit {
@@ -78,6 +92,7 @@ export interface HabitWithStats extends Habit {
   longestStreak: number;
   completionRate: number; // 0–1
   todayCompleted: boolean;
+  todayCompletedSubtasks?: string[];
   weekLogs: DayLog[];
   periodCompletions?: number;
   periodTarget?: number;
@@ -91,4 +106,5 @@ export interface User {
   createdAt: string;
   notificationsEnabled?: boolean;
   reminderTime?: string;
+  theme?: ThemeMode;
 }

@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       photoURL: firebaseUser.photoURL ?? undefined,
       createdAt: new Date().toISOString(),
       notificationsEnabled: false,
+      theme: "retro",
     };
 
     await setDoc(userRef, newProfile);
