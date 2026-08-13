@@ -18,6 +18,7 @@ import {
   DayLog,
   DayOfWeek,
   HabitSchedule,
+  DailyPlan,
 } from "@/types";
 import {
   format,
@@ -185,6 +186,32 @@ export async function getHabitLogs(userId: string, habitId: string, startDate: s
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as HabitLog));
+}
+
+// ─── Daily Plans ──────────────────────────────────────────────────────────────
+
+export function isEveryDayHabit(habit: Habit): boolean {
+  return habit.schedule.type === "weekly" && habit.schedule.days.length === 7;
+}
+
+export function defaultPlanHabitIds(habits: Habit[]): string[] {
+  return habits.filter(isEveryDayHabit).map((h) => h.id);
+}
+
+export async function saveDailyPlan(userId: string, date: string, habitIds: string[]): Promise<DailyPlan> {
+  const id = `${userId}_${date}`;
+  const ref = doc(db, "dailyPlans", id);
+  const existing = await getDoc(ref);
+  const plan: DailyPlan = {
+    id,
+    userId,
+    date,
+    habitIds,
+    createdAt: existing.exists() ? (existing.data() as DailyPlan).createdAt : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await setDoc(ref, plan);
+  return plan;
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────

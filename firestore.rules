@@ -34,5 +34,19 @@ service cloud.firestore {
       allow update, delete: if request.auth != null
         && resource.data.userId == request.auth.uid;
     }
+
+    match /dailyPlans/{planId} {
+      // Read: must own the plan
+      allow read: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+
+      // Create: userId in the new plan must match the logged-in user
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+
+      // Update/delete: must own the existing plan
+      allow update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
   }
 }

@@ -2,14 +2,16 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { format, subDays, isSameDay, startOfDay } from "date-fns";
-import { Plus } from "lucide-react";
+import { Plus, ClipboardList } from "lucide-react";
 import { useHabits } from "@/hooks/useHabits";
+import { useDailyPlan } from "@/hooks/useDailyPlan";
 import HabitCard from "@/components/habits/HabitCard";
 import AddHabitModal from "@/components/habits/AddHabitModal";
+import DailyPlanModal from "@/components/habits/DailyPlanModal";
 import DailyProgress from "@/components/habits/DailyProgress";
 import { useAuth } from "@/lib/auth-context";
 import { isScheduledDay } from "@/lib/habits";
-import { formatDateString } from "@/lib/utils";
+import { formatDateString, getTodayString } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
@@ -22,10 +24,12 @@ export default function DashboardPage() {
   const dateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
   
   const { habits, loading, toggle } = useHabits(dateString);
+  const { plan, loading: planLoading, savePlan } = useDailyPlan(dateString);
   const { user } = useAuth();
   const { isRetro } = useTheme();
   const copy = useCopy();
   const [addOpen, setAddOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
 
@@ -34,8 +38,29 @@ export default function DashboardPage() {
     return Array.from({ length: 7 }, (_, i) => subDays(today, i)).reverse();
   }, [today]);
 
-  // Show habits that are scheduled for the selected day
-  const filteredHabits = habits.filter((h) => isScheduledDay(h.schedule, selectedDate));
+  // Habits shown for the selected day: the day's plan if one exists,
+  // otherwise fall back to whatever is scheduled that day.
+  const filteredHabits = plan
+    ? habits.filter((h) => plan.habitIds.includes(h.id))
+    : habits.filter((h) => isScheduledDay(h.schedule, selectedDate));
+
+  function closePlanModal() {
+    setPlanOpen(false);
+    if (user && typeof window !== "undefined") {
+      localStorage.setItem(`synapse_plan_prompted_${user.uid}_${dateString}`, "1");
+    }
+  }
+
+  // Auto-prompt to create today's plan the first time the app is opened each day
+  useEffect(() => {
+    if (!mounted || !user || loading || planLoading) return;
+    if (dateString !== getTodayString()) return;
+    if (plan) return;
+    if (typeof window === "undefined") return;
+    const key = `synapse_plan_prompted_${user.uid}_${dateString}`;
+    if (localStorage.getItem(key)) return;
+    setPlanOpen(true);
+  }, [mounted, user, loading, planLoading, plan, dateString]);
   const completedCount = filteredHabits.reduce((acc, h) => {
     if (h.subtasks && h.subtasks.length > 0) {
       return acc + (h.todayCompletedSubtasks?.length || 0) / h.subtasks.length;
@@ -119,6 +144,20 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {/* Daily plan button */}
+      <button
+        onClick={() => setPlanOpen(true)}
+        className={cn(
+          "w-full mb-6 flex items-center justify-center gap-2 py-3 transition-all font-theme",
+          isRetro
+            ? "border border-th-primary/40 text-th-primary bg-th-screen-light/30 hover:bg-th-primary/10 text-xs font-700 uppercase tracking-widest"
+            : "bg-th-surface rounded-2xl shadow-neu-out text-th-text text-sm font-500 hover:shadow-neu-in"
+        )}
+      >
+        <ClipboardList className="w-4 h-4" />
+        {plan ? copy.planButtonEdit : copy.planButtonCreate}
+      </button>
+
       {/* Progress section */}
       {filteredHabits.length > 0 && (
         <div className="mb-6">
@@ -158,6 +197,21 @@ export default function DashboardPage() {
             </div>
           ))
         )}
+
+        {!loading && (
+          <button
+            onClick={() => setPlanOpen(true)}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-3 transition-all font-theme",
+              isRetro
+                ? "border border-dashed border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:border-th-primary/60 text-xs font-700 uppercase tracking-widest"
+                : "bg-th-surface/50 rounded-xl text-th-text-secondary text-sm font-500 hover:bg-th-surface"
+            )}
+          >
+            <Plus className="w-4 h-4" />
+            {copy.addToPlanButton}
+          </button>
+        )}
       </div>
 
       {/* FAB */}
@@ -174,6 +228,13 @@ export default function DashboardPage() {
       </button>
 
       <AddHabitModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <DailyPlanModal
+        open={planOpen}
+        onClose={closePlanModal}
+        habits={habits}
+        plan={plan}
+        onSave={savePlan}
+      />
     </div>
   );
 }

@@ -87,6 +87,15 @@ export interface DayLog {
   completedSubtasks?: string[];
 }
 
+export interface DailyPlan {
+  id: string;
+  userId: string;
+  date: string; // "YYYY-MM-DD"
+  habitIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HabitWithStats extends Habit {
   currentStreak: number;
   longestStreak: number;

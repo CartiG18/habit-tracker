@@ -58,6 +58,15 @@ export type CopyKey =
   | "allDoneHint"
   | "loadPrefix"
   | "pendingSuffix"
+  // Daily plan
+  | "planButtonCreate"
+  | "planButtonEdit"
+  | "planModalTitle"
+  | "planModalHint"
+  | "planEmptyState"
+  | "planAutoTag"
+  | "planSaveButton"
+  | "addToPlanButton"
   // Progress page
   | "progressModule"
   | "progressTitle"
@@ -160,6 +169,16 @@ const RETRO: Record<CopyKey, string> = {
   allDoneHint: "ALL PROCESSES COMPLETE",
   loadPrefix: "LOAD:",
   pendingSuffix: "PENDING PROCESSES",
+
+  // Daily plan
+  planButtonCreate: "INIT_DAILY_PLAN",
+  planButtonEdit: "EDIT_DAILY_PLAN",
+  planModalTitle: "DAILY_EXEC_PLAN",
+  planModalHint: "SELECT PROCESSES TO EXECUTE TODAY",
+  planEmptyState: "NO PROCESSES AVAILABLE",
+  planAutoTag: "AUTO / DAILY",
+  planSaveButton: "COMMIT_PLAN",
+  addToPlanButton: "+ ADD_TO_PLAN",
 
   // Progress page
   progressModule: "SYS.MODULE: DIAGNOSTICS",
@@ -267,6 +286,16 @@ const SOFT: Record<CopyKey, string> = {
   allDoneHint: "Every habit completed today",
   loadPrefix: "",
   pendingSuffix: "remaining",
+
+  // Daily plan
+  planButtonCreate: "Plan Today",
+  planButtonEdit: "Edit Plan",
+  planModalTitle: "Today's Plan",
+  planModalHint: "Choose which habits you want to complete today",
+  planEmptyState: "No habits yet — create one first",
+  planAutoTag: "Every day",
+  planSaveButton: "Save Plan",
+  addToPlanButton: "+ Add a habit",
 
   // Progress page
   progressModule: "Progress",
