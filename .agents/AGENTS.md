@@ -10,8 +10,8 @@
 
 **Product name:** SYNAPSE (branded as `SYNAPSE_OS v3.0`)
 
-**Dual Theming System:**
-The application supports two contrasting visual themes, which users can toggle in settings. All components must be built to support both themes seamlessly using the `useTheme()` hook, semantic CSS tokens, and the `useCopy()` translation engine.
+**Theming System:**
+The application supports any number of themes, each defined in one file under `lib/themes/` (see §13). Every theme builds on one of two **bases**, Retro or Soft, which decide component *structure* (bezels vs rounded cards). The theme file supplies everything else: colors, fonts, background, shadows, effects and copy. Components support every theme by branching on `isRetro` / `isSoft` (which mean "base is retro/soft") and by using `th-*` tokens and `useCopy()`.
 
 ### Theme A: Retro Terminal
 **Internal metaphor:** A retro NASA / Cold War–era hardware terminal. The UI presents a CRT monitor recessed into a putty-colored mechanical bezel, complete with screws, scanlines, oscilloscope bar charts, and glowing amber text.
@@ -71,6 +71,7 @@ habit-tracker/
 │   └── layout/                  # Shell / nav components
 ├── hooks/                       # Custom React hooks
 ├── lib/                         # Utilities, Firebase init, data layer
+│   └── themes/                  # Theme registry — one file per theme (§13)
 ├── types/                       # Shared TypeScript types
 └── public/                      # PWA manifest, service worker
 ```
@@ -106,8 +107,9 @@ The app uses semantic CSS variables mapped to Tailwind classes (`th-*`).
 Colors are used for habit dots and streaks. They are vibrant enough to work as CRT phosphor, but also work on the soft parchment.
 
 ### Typography
-- **Retro Font:** JetBrains Mono (`font-theme`, when `isRetro` is true)
-- **Soft Font:** Roboto (`font-theme`, when `isRetro` is false)
+- `font-theme`: the active theme's body font (`fonts.body`): JetBrains Mono for Retro, Roboto for Soft.
+- `font-display`: the active theme's title font (`fonts.display`, defaults to body). Use it on page `<h1>`s.
+- Fonts are registered once in `lib/themes/fonts.ts`; themes reference them by key.
 - **Conditional Styling:** Use the `cn()` utility to apply different font weights and text transforms based on `isRetro`. For example: `cn("font-theme", isRetro ? "font-800 uppercase tracking-widest text-glow text-th-primary" : "font-500 text-th-text")`
 
 ### Text effects
@@ -145,7 +147,18 @@ Key CSS classes (from `globals.css`):
 - `.shadow-mech-out` / `.shadow-mech-in` → physical toggle button states
 - `.shadow-bezel-inner` → deep inset border around the CRT
 
+### Mobile-first rules
+- Full-height shells use `.h-app` (100dvh with a 100vh fallback); modal bodies use `.max-h-modal`.
+- The viewport is `viewport-fit=cover`: anything touching a screen edge pads with
+  `env(safe-area-inset-*)` (shell top, soft bottom nav, floating buttons, modal overlays).
+- Floating controls are anchored to the `max-w-lg` app column, not the window edge.
+- Destructive actions use a two-tap confirm (first tap arms for 3s) — never `window.confirm`.
+- Use `makeId()` from `lib/utils.ts`, not `crypto.randomUUID()` (missing on http://<LAN-IP> when testing on a phone).
+
 ### Modals
+Render every modal inside `<ModalPortal>` (`components/layout/ModalPortal.tsx`) so it
+escapes scroll containers and animated ancestors. Mount child modals conditionally
+(`{open && <Modal …/>}`) so their form state starts fresh each time.
 All modals follow the same bezel-inside-CRT pattern:
 1. Fixed overlay (`bg-black/80 backdrop-blur-sm`)
 2. Outer putty shell (`bg-putty border-4 border-putty-dark rounded-xl shadow-mech-out p-3`)
@@ -197,6 +210,15 @@ All modals follow the same bezel-inside-CRT pattern:
 - Actions use `useCallback` and surface errors via `react-hot-toast`.
 - New data operations should follow this pattern: add a function to `lib/habits.ts`,
   then expose it through the hook.
+- The dashboard runs **one** `useHabits(date)` and shares it via `HabitsContext`;
+  cards and modals read it with `useHabitsContext()`. Never call `useHabits()` inside a
+  modal or card — each call opens its own listeners and refetches every habit's stats.
+- Mutating actions (`addHabit`, `editHabit`, `removeHabit`, `addNote`, `savePlan`) catch
+  their own errors, toast `copy.toastSaveFailed`, and resolve to `true`/`false`. Only close
+  a form when it resolves `true`, so nothing the user typed is lost.
+- `setDoc` replaces the whole document: when rewriting a log, carry over fields you
+  aren't changing (e.g. `note`). Firestore also rejects `undefined` values — omit
+  optional fields instead of setting them to `undefined`.
 
 ### Types (`types/index.ts`)
 - All shared types are centralized here. Component-specific `Props` interfaces are
@@ -332,7 +354,8 @@ Never hardcode these values. Never commit `.env.local`.
 
 Before submitting any new code, verify:
 
-- [ ] Supports both Retro and Soft themes via `isRetro` checks and `th-*` tokens.
+- [ ] Supports both bases via `isRetro` checks and `th-*` tokens, so it works for every theme.
+- [ ] No hex/rgb literals for theme colors. Use `th-*` classes, or `rgb(var(--th-primary)/0.4)` inside arbitrary values and inline styles. (Never `rgba(var(--th-x),a)`: the vars hold space-separated channels, so that is invalid CSS.)
 - [ ] Text is supplied by `useCopy()`; absolutely no hardcoded strings.
 - [ ] Retro mode adheres to terminal jargon, uppercase text, and `font-theme`.
 - [ ] Soft mode adheres to clean, lowercase/sentence-case text.
@@ -342,3 +365,85 @@ Before submitting any new code, verify:
 - [ ] Types are defined in `types/index.ts`.
 - [ ] `cn()` is used for conditional class names.
 - [ ] No new dependencies without explicit approval.
+
+---
+
+## 13. Theme System — Adding a Theme
+
+### How it fits together
+```
+lib/themes/
+├── types.ts     ThemeDefinition: the shape of a theme
+├── fonts.ts     next/font registry (FontKey → --font-<key>)
+├── retro.ts     Retro Terminal (base theme for base: "retro")
+├── soft.ts      Soft Focus     (base theme for base: "soft")
+├── extend.ts    extendTheme(): derive a theme from a base
+├── events.ts    emitHabitComplete() / onHabitComplete() for theme overlays
+├── wallpaper.ts wallpaper adjustment types + `--wallpaper-*` var mapping
+├── princess.ts  Princess (soft-based, custom overlay)
+└── index.ts     THEMES registry, CSS + init-script generators
+```
+- The active theme id is stored in localStorage, the user's Firestore profile and a `synapse-theme` cookie. `app/layout.tsx` reads the cookie so the server renders the right theme (no hydration mismatch); this makes routes dynamic.
+- `app/layout.tsx` renders `buildThemeStylesheet()` as an inline `<style>`: one `html[data-theme="<id>"]{--th-*…}` block per theme. It also renders `buildThemeInitScript()`, which applies the stored theme before first paint.
+- `<html>` carries `data-theme="<id>"` (which token set applies) and `class="theme-<base>"` (which structural CSS in `globals.css` applies).
+- `lib/wallpaper-context.tsx` (`useWallpaper()`) holds the user's on-device wallpaper (downscaled photo in localStorage) and adjustments; the `<head>` script applies them before first paint.
+- Users can recolor a theme's `surface`, `screen`, `primary`, `success` and `text` in Preferences → Colors (per theme, on-device; companion shades are derived in `lib/themes/colors.ts`). Theme defaults are always offered as swatches, so a theme's `colors` are the reset values.
+- `useTheme()` returns `{ theme, def, base, isRetro, isSoft, setTheme }`. `def` is the full definition. `useCopy()` returns `def.copy`.
+- The settings picker, toaster, boot animation and browser `theme-color` all read from the registry. Nothing else needs editing.
+
+### Steps
+1. **Create `lib/themes/<id>.ts`** by extending the closest base:
+   ```ts
+   import { Trees } from "lucide-react";
+   import { extendTheme } from "@/lib/themes/extend";
+   import { soft } from "@/lib/themes/soft";
+
+   export const forest = extendTheme(soft, {
+     name: "Forest",
+     description: "Moss & morning fog",
+     icon: Trees,
+     colors: { primary: "#4F7942", surface: "#E8EDE4", text: "#2B3A2B" },
+     fonts: { body: "sans", display: "serif" },          // keys from fonts.ts
+     background: { image: `url("/themes/forest/bg.jpg")`, size: "cover", attachment: "fixed" },
+     effects: { glow: false },
+     copy: { appTitle: "Grove", activeHabits: "Today's Growth" }, // any CopyKey
+     metaColor: "#E8EDE4",
+     css: (sel) => `${sel} .bottom-nav { backdrop-filter: blur(8px); }`, // escape hatch
+   });
+   ```
+   Only list what differs. Nested groups (`colors`, `fonts`, `copy`, `effects`, …) merge key by key.
+2. **Register it** in `THEMES` in `lib/themes/index.ts`. The key is the persisted id; order is the picker order.
+3. **New font?** For a Google Font, add it to `FONTS` in `lib/themes/fonts.ts` with `variable: "--font-<key>"` and `preload: false`. For a font file, put it in `public/fonts/` and add it to `FONT_FILES` with a fallback stack.
+4. **Images** go in `public/themes/<id>/`. Reference them with absolute paths (`/themes/<id>/…`).
+5. Run `npx tsc --noEmit`. A missing copy key or bad font key is a type error.
+
+### Token reference
+| Field | Drives |
+|---|---|
+| `colors.surface / surfaceDark / surfaceLight` | `th-surface*` — bezel, cards, nav |
+| `colors.screen / screenDark / screenLight` | `th-screen*` — CRT glass / paper |
+| `colors.primary` | `th-primary`, glows, graph paper, scanlines |
+| `colors.success` | `th-success`, `.text-signal`, completion LEDs |
+| `colors.text`, `colors.btnText` | `th-text`, `th-btn-text` |
+| `opacity.*` | `th-primary-dim/-glow`, `th-success-dim`, `th-text-secondary` |
+| `fonts.body / display` | `font-theme`, `font-display` |
+| `background.*` | page background behind the shell (`body`) |
+| `wallpaper` | default wallpaper `{ image, fit?, x?, y?, zoom?, dim? }` (image under `public/backgrounds/`; ship a phone-sized ~1080px copy). Soft base: the main screen becomes a veil (`dim`) over it. Users can override it on-device in Preferences. |
+| `shadows.*` | `shadow-th-raised/-inset`, `shadow-neu-out/-in` |
+| `radius.*` | what `rounded-lg/-xl/-2xl/-3xl` mean for this theme |
+| `icon` | the theme's icon in the settings picker (lucide or custom artwork) |
+| `navIcons.*` | bottom-nav icons: lucide icons, custom SVG components taking `LucideProps`, or `imageIcon("/icons/x.svg")` for full-color artwork (style inactive tabs via `nav a:not([aria-current]) .theme-img-icon` in `css()`) |
+| `marker` | habit-card completion marker shape: `"circle"` or `"star"` (soft base) |
+| `markerFill` | completed star gradient `{ stops: [light, mid, deep], glow }` (e.g. Princess gold) |
+| `icons.*` | every UI icon by role (`close`, `check`, `chevron`, `add`, `plan`, `streak`, `rate`, `best`, `edit`, `delete`, `appearance`, `notifications`, `account`, `logout`, `upload`, `reset`). Base themes use `LUCIDE_ICONS`; override any subset. Components draw icons only via `const Icons = useIcons(); <Icons.close …/>` — never import lucide icons directly. |
+| `toastIcons` | colors of the toast success/error icons |
+| `selection`, `frameFill` | how the selected day / nav tab is shown: `"fill"` (raised chip) or `"frame"` (no background, gradient `.sel-frame` ring in `frameFill` colors, hover/press enlarges) |
+| `effects.*` | glow, scanlines, flicker, grid (visible on retro base) |
+| `bootLines` | dashboard boot animation (retro base; `[]` skips it) |
+| `toast` | react-hot-toast style (use `var(--th-*)` to inherit colors) |
+| `metaColor` | browser / PWA status-bar color |
+| `css(selector)` | raw CSS scoped to the theme, for anything else |
+| `overlay` | client component drawn above the app (decorations, effects). Put it in `components/themes/<id>/`. |
+
+A theme that needs a genuinely new *structure* (not just new styling) needs a new base. That means adding to `ThemeBase` and branching components on it. Prefer tokens and `css()` first.
+

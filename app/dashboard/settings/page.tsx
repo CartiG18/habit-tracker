@@ -5,16 +5,19 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { LogOut, Bell, Settings, Monitor, LayoutTemplate } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
+import { THEMES, THEME_IDS } from "@/lib/themes";
+import WallpaperSettings from "@/components/settings/WallpaperSettings";
+import ColorSettings from "@/components/settings/ColorSettings";
 
 export default function SettingsPage() {
   const { user, userProfile, signOut } = useAuth();
   const { theme, setTheme, isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
   const router = useRouter();
 
   const [notifEnabled, setNotifEnabled] = useState(
@@ -33,29 +36,44 @@ export default function SettingsPage() {
     if (!user) return;
 
     if (!notifEnabled) {
-      // Request permission
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        toast.error(isRetro ? "PERMISSION_DENIED" : "Permission denied");
+      // Safari only exposes Notification to installed (home-screen) web apps
+      if (typeof window === "undefined" || !("Notification" in window)) {
+        toast.error(copy.toastNotifUnsupported);
+        return;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          toast.error(copy.toastPermDenied);
+          return;
+        }
+      } catch {
+        toast.error(copy.toastNotifUnsupported);
         return;
       }
     }
 
     const newVal = !notifEnabled;
     setNotifEnabled(newVal);
-    await updateDoc(doc(db, "users", user.uid), {
-      notificationsEnabled: newVal,
-    });
-    toast.success(newVal 
-      ? (isRetro ? "ALERTS_ENABLED" : "Notifications enabled") 
-      : (isRetro ? "ALERTS_DISABLED" : "Notifications disabled")
-    );
+    try {
+      await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: newVal });
+      toast.success(newVal ? copy.toastAlertsOn : copy.toastAlertsOff);
+    } catch (err: any) {
+      console.error("Save notification setting error:", err);
+      setNotifEnabled(!newVal);
+      toast.error(copy.toastSaveFailed);
+    }
   }
 
   async function saveReminderTime(time: string) {
     if (!user) return;
     setReminderTime(time);
-    await updateDoc(doc(db, "users", user.uid), { reminderTime: time });
+    try {
+      await updateDoc(doc(db, "users", user.uid), { reminderTime: time });
+    } catch (err: any) {
+      console.error("Save reminder time error:", err);
+      toast.error(copy.toastSaveFailed);
+    }
   }
 
   return (
@@ -64,7 +82,7 @@ export default function SettingsPage() {
         <p className={cn("font-theme transition-colors mb-1", isRetro ? "text-th-primary/60 text-xs uppercase tracking-widest" : "text-th-text-secondary text-sm")}>
           {copy.settingsModule}
         </p>
-        <h1 className={cn("font-theme transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
+        <h1 className={cn("font-display transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
           {copy.settingsTitle}
         </h1>
       </div>
@@ -79,7 +97,7 @@ export default function SettingsPage() {
         
         <div className={cn("flex items-center justify-center text-xl overflow-hidden relative z-10 transition-colors",
           isRetro 
-            ? "w-14 h-14 bg-th-screen border-2 border-th-primary/50 shadow-[inset_0_0_10px_rgba(var(--th-primary),0.3)]"
+            ? "w-14 h-14 bg-th-screen border-2 border-th-primary/50 shadow-[inset_0_0_10px_rgb(var(--th-primary)/0.3)]"
             : "w-16 h-16 rounded-full bg-th-surface shadow-neu-in"
         )}>
           {user?.photoURL ? (
@@ -98,12 +116,12 @@ export default function SettingsPage() {
           <p className={cn("font-theme leading-tight transition-colors",
             isRetro ? "font-800 text-th-primary text-lg uppercase tracking-widest text-glow" : "font-700 text-th-text text-xl"
           )}>
-            {user?.displayName ?? (isRetro ? "OPERATOR" : "User")}
+            {user?.displayName ?? copy.userFallback}
           </p>
           <p className={cn("font-theme transition-colors mt-1",
             isRetro ? "text-th-primary/50 text-[10px] uppercase tracking-widest" : "text-th-text-secondary text-sm"
           )}>
-            {isRetro ? "ID: " : ""}{user?.email}
+            {copy.emailPrefix}{user?.email}
           </p>
         </div>
       </div>
@@ -120,45 +138,45 @@ export default function SettingsPage() {
           <p className={cn("font-theme flex items-center gap-2", 
             isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
           )}>
-            <Monitor className="w-4 h-4" /> {copy.appearanceLabel}
+            <Icons.appearance className="w-4 h-4" /> {copy.appearanceLabel}
           </p>
         </div>
 
         <div className="p-5 relative z-10 grid grid-cols-2 gap-4">
-          <button
-            onClick={() => setTheme("retro")}
-            className={cn("flex flex-col items-center p-4 transition-all",
-              isRetro 
-                ? ["border-2", theme === "retro" ? "border-th-primary bg-th-primary/10 shadow-[0_0_10px_rgba(var(--th-primary),0.2)]" : "border-th-primary/20 opacity-50"]
-                : ["rounded-xl", theme === "retro" ? "bg-th-surface shadow-neu-in" : "bg-th-surface shadow-neu-out hover:shadow-neu-in"]
-            )}
-          >
-            <Monitor className={cn("w-6 h-6 mb-2", theme === "retro" ? (isRetro ? "text-th-primary" : "text-th-primary") : "text-th-text-secondary")} />
-            <span className={cn("font-theme", 
-              isRetro ? "text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500",
-              theme === "retro" ? (isRetro ? "text-th-primary" : "text-th-text") : (isRetro ? "text-th-primary/60" : "text-th-text-secondary")
-            )}>
-              Retro Terminal
-            </span>
-          </button>
-          
-          <button
-            onClick={() => setTheme("soft")}
-            className={cn("flex flex-col items-center p-4 transition-all",
-              isRetro 
-                ? ["border-2", theme === "soft" ? "border-th-primary bg-th-primary/10 shadow-[0_0_10px_rgba(var(--th-primary),0.2)]" : "border-th-primary/20 opacity-50"]
-                : ["rounded-xl", theme === "soft" ? "bg-th-surface shadow-neu-in" : "bg-th-surface shadow-neu-out hover:shadow-neu-in"]
-            )}
-          >
-            <LayoutTemplate className={cn("w-6 h-6 mb-2", theme === "soft" ? (isRetro ? "text-th-primary" : "text-th-primary") : "text-th-text-secondary")} />
-            <span className={cn("font-theme", 
-              isRetro ? "text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500",
-              theme === "soft" ? (isRetro ? "text-th-primary" : "text-th-text") : (isRetro ? "text-th-primary/60" : "text-th-text-secondary")
-            )}>
-              Soft Focus
-            </span>
-          </button>
+          {THEME_IDS.map((id) => {
+            const option = THEMES[id];
+            const active = theme === id;
+            const Icon = option.icon;
+            return (
+              <button
+                key={id}
+                onClick={() => setTheme(id)}
+                className={cn("flex flex-col items-center p-4 transition-all",
+                  isRetro
+                    ? ["border-2", active ? "border-th-primary bg-th-primary/10 shadow-[0_0_10px_rgb(var(--th-primary)/0.2)]" : "border-th-primary/20 opacity-50"]
+                    : ["rounded-xl bg-th-surface", active ? "shadow-neu-in" : "shadow-neu-out hover:shadow-neu-in"]
+                )}
+              >
+                <Icon className={cn("w-6 h-6 mb-2", active ? "text-th-primary" : "text-th-text-secondary")} />
+                <span className={cn("font-theme",
+                  isRetro ? "text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500",
+                  active ? (isRetro ? "text-th-primary" : "text-th-text") : (isRetro ? "text-th-primary/60" : "text-th-text-secondary")
+                )}>
+                  {option.name}
+                </span>
+                <span className={cn("font-theme mt-1",
+                  isRetro ? "text-[8px] uppercase tracking-widest text-th-primary/40" : "text-xs text-th-text-secondary"
+                )}>
+                  {option.description}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Wallpaper — soft-base themes (retro keeps its CRT screen) */}
+        {!isRetro && <WallpaperSettings />}
+        {!isRetro && <ColorSettings />}
       </div>
 
       {/* Notifications - Toggle */}
@@ -173,7 +191,7 @@ export default function SettingsPage() {
           <p className={cn("font-theme flex items-center gap-2",
             isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
           )}>
-            <Bell className="w-4 h-4" /> {copy.notificationsLabel}
+            <Icons.notifications className="w-4 h-4" /> {copy.notificationsLabel}
           </p>
         </div>
 
@@ -197,7 +215,7 @@ export default function SettingsPage() {
               >
                 <div className={cn(
                   "w-6 h-full rounded-sm transition-colors duration-300 border border-black/20",
-                  notifEnabled ? "bg-th-success shadow-[0_0_8px_rgba(var(--th-success),0.8)]" : "bg-th-surface-light"
+                  notifEnabled ? "bg-th-success shadow-[0_0_8px_rgb(var(--th-success)/0.8)]" : "bg-th-surface-light"
                 )} />
               </button>
             ) : (
@@ -253,7 +271,7 @@ export default function SettingsPage() {
           <p className={cn("font-theme flex items-center gap-2",
             isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
           )}>
-            <Settings className="w-4 h-4" /> {copy.accountLabel}
+            <Icons.account className="w-4 h-4" /> {copy.accountLabel}
           </p>
         </div>
 
@@ -265,7 +283,7 @@ export default function SettingsPage() {
               : "text-red-500 hover:bg-red-50 font-500 text-base"
           )}
         >
-          <LogOut className="w-4 h-4" />
+          <Icons.logout className="w-4 h-4" />
           <span>{copy.logoutButton}</span>
         </button>
       </div>
@@ -274,11 +292,11 @@ export default function SettingsPage() {
         isRetro ? "text-th-primary/40" : "text-th-text-secondary/60"
       )}>
         <p className={cn("uppercase", isRetro ? "text-[9px] tracking-[0.3em]" : "text-xs font-500 tracking-wide")}>
-          SYNAPSE OS v3.0
+          {copy.versionText}
         </p>
-        {isRetro && (
+        {copy.copyrightText && (
           <p className="text-[8px] uppercase tracking-[0.2em] text-th-primary/20">
-            (C) 1986 NEURAL DYNAMICS INC.
+            {copy.copyrightText}
           </p>
         )}
       </div>

@@ -2,64 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Retro Terminal Theme ─────────────────────────────────────────────────── */
-
-.theme-retro {
-  --th-surface:       189 183 171;   /* #BDB7AB putty */
-  --th-surface-dark:  138 133 122;   /* #8A857A */
-  --th-surface-light: 226 221 211;   /* #E2DDD3 */
-  --th-screen:        26 27 30;      /* #1A1B1E basalt */
-  --th-screen-dark:   15 15 18;      /* #0F0F12 */
-  --th-screen-light:  42 43 48;      /* #2A2B30 */
-  --th-primary:       255 176 0;     /* #FFB000 amber */
-  --th-primary-dim:   rgba(255, 176, 0, 0.3);
-  --th-primary-glow:  rgba(255, 176, 0, 0.6);
-  --th-success:       50 205 50;     /* #32CD32 signal */
-  --th-success-dim:   rgba(50, 205, 50, 0.3);
-  --th-text:          255 176 0;     /* amber = text in retro */
-  --th-text-secondary: rgba(255, 176, 0, 0.6);
-  --th-btn-text:      26 27 30;      /* basalt on amber buttons */
-
-  --font-theme: var(--font-mono), monospace;
-
-  --shadow-raised: 2px 2px 0px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.6), inset -2px -2px 4px rgba(0,0,0,0.4);
-  --shadow-inset:  inset 3px 3px 6px rgba(0,0,0,0.6), inset -1px -1px 3px rgba(255,255,255,0.2);
-  --shadow-neu-out: none;
-  --shadow-neu-in:  none;
-}
-
-/* ─── Soft Focus Theme ─────────────────────────────────────────────────────── */
-
-.theme-soft {
-  --th-surface:       240 236 227;   /* #F0ECE3 parchment */
-  --th-surface-dark:  212 207 198;   /* #D4CFC6 */
-  --th-surface-light: 250 248 245;   /* #FAF8F5 */
-  --th-screen:        255 255 255;   /* white */
-  --th-screen-dark:   245 241 236;   /* #F5F1EC */
-  --th-screen-light:  255 255 255;   /* white */
-  --th-primary:       124 131 253;   /* #7C83FD periwinkle */
-  --th-primary-dim:   rgba(124, 131, 253, 0.12);
-  --th-primary-glow:  rgba(124, 131, 253, 0.2);
-  --th-success:       102 187 106;   /* #66BB6A sage */
-  --th-success-dim:   rgba(102, 187, 106, 0.15);
-  --th-text:          58 58 58;      /* #3A3A3A charcoal */
-  --th-text-secondary: rgba(58, 58, 58, 0.5);
-  --th-btn-text:      255 255 255;   /* white on accent btns */
-
-  --font-theme: var(--font-sans), sans-serif;
-
-  --shadow-raised: none;
-  --shadow-inset:  none;
-  --shadow-neu-out: 6px 6px 14px rgba(174,168,157,0.35), -6px -6px 14px rgba(255,255,255,0.85);
-  --shadow-neu-in:  inset 3px 3px 6px rgba(174,168,157,0.3), inset -3px -3px 6px rgba(255,255,255,0.7);
-}
+/* ─── Theme Tokens ───────────────────────────────────────────────────────────
+ * Color, font, shadow and background tokens are NOT defined here. They are
+ * generated from the theme registry (lib/themes/) and rendered as an inline
+ * <style> by app/layout.tsx under html[data-theme="<id>"].
+ *
+ * This file only holds the structural CSS for each theme *base*
+ * (.theme-retro / .theme-soft), written against those tokens.
+ */
 
 /* ─── Base Styles ──────────────────────────────────────────────────────────── */
-
-:root {
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-sans: 'Roboto', sans-serif;
-}
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -69,34 +21,30 @@ body {
   overscroll-behavior: none;
 }
 
-/* Retro body texture */
-.theme-retro body {
-  background-color: rgb(189 183 171);
-  color: rgb(255 176 0);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-}
-
-/* Soft body texture */
-.theme-soft body {
-  background-color: rgb(240 236 227);
-  color: rgb(58 58 58);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+body {
+  background-color: rgb(var(--th-bg-color));
+  background-image: var(--th-bg-image);
+  background-size: var(--th-bg-size);
+  background-position: var(--th-bg-position);
+  background-repeat: var(--th-bg-repeat);
+  background-attachment: var(--th-bg-attachment);
+  color: rgb(var(--th-text));
 }
 
 /* ─── Retro-only: Mechanical Panel ─────────────────────────────────────────── */
 
 .theme-retro .mech-panel {
-  background: rgb(189 183 171);
-  border: 2px solid #8A857A;
+  background: rgb(var(--th-surface));
+  border: 2px solid rgb(var(--th-surface-dark));
   box-shadow: 4px 4px 10px rgba(0,0,0,0.5), -2px -2px 5px rgba(255,255,255,0.4);
 }
 
 /* ─── Retro-only: CRT Screen ──────────────────────────────────────────────── */
 
 .theme-retro .crt-screen {
-  background: rgb(26 27 30);
-  color: rgb(255 176 0);
-  box-shadow: inset 0 0 40px rgba(0,0,0,0.8), inset 0 0 10px rgba(255, 176, 0, 0.1);
+  background: rgb(var(--th-screen));
+  color: rgb(var(--th-primary));
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.8), inset 0 0 10px rgb(var(--th-primary) / 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -117,7 +65,7 @@ body {
   display: block;
   position: absolute;
   top: 0; left: 0; bottom: 0; right: 0;
-  background: rgba(255, 176, 0, 0.05);
+  background: rgb(var(--th-primary) / 0.05);
   opacity: 0;
   z-index: 10;
   pointer-events: none;
@@ -141,7 +89,7 @@ body {
   top: 0; left: 0;
   width: 100%;
   height: 20px;
-  background: linear-gradient(to bottom, rgba(255,176,0,0), rgba(255,176,0,0.1) 50%, rgba(255,176,0,0));
+  background: linear-gradient(to bottom, rgb(var(--th-primary) / 0), rgb(var(--th-primary) / 0.1) 50%, rgb(var(--th-primary) / 0));
   opacity: 0.4;
   z-index: 11;
   pointer-events: none;
@@ -157,8 +105,8 @@ body {
 .bg-graph-paper {
   background-size: 20px 20px;
   background-image:
-    linear-gradient(rgba(255, 176, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 176, 0, 0.1) 1px, transparent 1px);
+    linear-gradient(rgb(var(--th-primary) / 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--th-primary) / 0.1) 1px, transparent 1px);
 }
 
 .theme-soft .bg-graph-paper {
@@ -168,7 +116,7 @@ body {
 /* ─── Text Glow (retro only) ───────────────────────────────────────────────── */
 
 .theme-retro .text-glow {
-  text-shadow: 0 0 5px rgba(255, 176, 0, 0.6), 0 0 1px rgba(255, 176, 0, 0.3);
+  text-shadow: 0 0 5px var(--th-primary-glow), 0 0 1px var(--th-primary-dim);
 }
 
 .theme-soft .text-glow {
@@ -177,14 +125,84 @@ body {
 
 /* ─── Signal Text ──────────────────────────────────────────────────────────── */
 
-.theme-retro .text-signal {
-  color: rgb(50 205 50);
-  text-shadow: 0 0 5px rgba(50, 205, 50, 0.6);
+.text-signal {
+  color: rgb(var(--th-success));
 }
 
-.theme-soft .text-signal {
-  color: rgb(102 187 106);
-  text-shadow: none;
+.theme-retro .text-signal {
+  text-shadow: 0 0 5px rgb(var(--th-success) / 0.6);
+}
+
+/* ─── Selection Frame ─────────────────────────────────────────────────────────
+ * Gradient ring with a transparent middle (mask cut-out), used by themes with
+ * `selection: "frame"` for the selected day / nav tab. Colors: --frame-1..3. */
+
+.sel-frame {
+  position: relative;
+  box-shadow: 0 0 10px var(--frame-glow, rgba(242, 193, 78, 0.45));
+}
+
+.sel-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--frame-1, #FFF1B8), var(--frame-2, #F2C14E) 50%, var(--frame-3, #B8862B));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ─── Wallpaper ───────────────────────────────────────────────────────────────
+ * Fixed layer behind the whole app. Shown when <html data-wallpaper> is set
+ * (theme default rendered by the server, or the user's photo applied on-device).
+ * Vars come from the theme stylesheet and/or inline overrides on <html>. */
+
+.wallpaper-layer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: rgb(var(--th-screen));
+}
+
+.wallpaper-layer > div {
+  position: absolute;
+  inset: 0;
+  background-image: var(--wallpaper-image);
+  background-size: var(--wallpaper-size, cover);
+  background-repeat: var(--wallpaper-repeat, no-repeat);
+  background-position: var(--wallpaper-position, 50% 50%);
+  transform: scale(var(--wallpaper-zoom, 1));
+  transform-origin: var(--wallpaper-position, 50% 50%);
+}
+
+html[data-wallpaper] .wallpaper-layer {
+  display: block;
+}
+
+/* Soft base: the main screen becomes a veil over the wallpaper; cards stay solid */
+html[data-wallpaper].theme-soft .app-screen {
+  background-color: rgb(var(--th-screen) / var(--wallpaper-dim, 0.35));
+}
+
+/* ─── Viewport Heights ───────────────────────────────────────────────────────
+ * dvh tracks the visible area as mobile browser bars show/hide; older iOS
+ * (<15.4) ignores it and keeps the vh fallback. */
+
+.h-app {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.max-h-modal {
+  max-height: 85vh;
+  max-height: 85dvh;
 }
 
 /* ─── Safe Areas ───────────────────────────────────────────────────────────── */
@@ -202,10 +220,10 @@ body {
   width: 6px;
 }
 .theme-retro ::-webkit-scrollbar-track {
-  background: #0F0F12;
+  background: rgb(var(--th-screen-dark));
 }
 .theme-retro ::-webkit-scrollbar-thumb {
-  background: rgb(255 176 0);
+  background: rgb(var(--th-primary));
   opacity: 0.5;
 }
 
@@ -213,10 +231,10 @@ body {
   width: 6px;
 }
 .theme-soft ::-webkit-scrollbar-track {
-  background: rgb(240 236 227);
+  background: rgb(var(--th-surface));
 }
 .theme-soft ::-webkit-scrollbar-thumb {
-  background: rgb(212 207 198);
+  background: rgb(var(--th-surface-dark));
   border-radius: 3px;
 }
 
@@ -235,11 +253,11 @@ body {
 }
 
 .theme-retro .bottom-nav {
-  background: rgb(189 183 171);
-  border-top: 2px solid #8A857A;
+  background: rgb(var(--th-surface));
+  border-top: 2px solid rgb(var(--th-surface-dark));
 }
 
 .theme-soft .bottom-nav {
-  background: rgb(250 248 245);
-  border-top: 1px solid rgb(226 221 211);
+  background: rgb(var(--th-surface-light));
+  border-top: 1px solid rgb(var(--th-surface-dark));
 }

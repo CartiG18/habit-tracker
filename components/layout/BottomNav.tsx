@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cpu, Activity, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isRetro } = useTheme();
+  const { isRetro, def } = useTheme();
   const copy = useCopy();
 
   const NAV_ITEMS = [
-    { href: "/dashboard", icon: Cpu, label: copy.navMain },
-    { href: "/dashboard/progress", icon: Activity, label: copy.navDiag },
-    { href: "/dashboard/settings", icon: SlidersHorizontal, label: copy.navCfg },
+    { href: "/dashboard", icon: def.navIcons.main, label: copy.navMain },
+    { href: "/dashboard/progress", icon: def.navIcons.diag, label: copy.navDiag },
+    { href: "/dashboard/settings", icon: def.navIcons.cfg, label: copy.navCfg },
   ];
 
   return (
@@ -23,7 +22,7 @@ export default function BottomNav() {
       "absolute bottom-0 left-0 right-0 z-40 transition-colors",
       isRetro 
         ? "bg-th-surface border-t-2 border-th-surface-dark shadow-th-raised"
-        : "bg-th-surface border-t border-th-surface-dark/20 shadow-neu-out sm:rounded-b-3xl"
+        : "bg-th-surface border-t border-th-surface-dark/20 shadow-neu-out sm:rounded-b-3xl pb-[env(safe-area-inset-bottom)]"
     )}>
       <div className="max-w-lg mx-auto flex items-center justify-between px-2 py-2">
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
@@ -32,6 +31,7 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
+              aria-current={active ? "page" : undefined}
               className="flex-1 px-1"
             >
               <div className={cn(
@@ -42,6 +42,13 @@ export default function BottomNav() {
                       active 
                         ? "bg-th-screen border-th-screen-light shadow-th-inset text-th-success" 
                         : "bg-th-surface-light border-th-surface shadow-th-raised text-th-btn-text hover:bg-th-surface"
+                    ]
+                  : def.selection === "frame"
+                  ? [
+                      "py-3 rounded-2xl overflow-visible transition-transform duration-200",
+                      active
+                        ? "sel-frame text-th-text"
+                        : "text-th-text-secondary hover:scale-110 active:scale-110"
                     ]
                   : [
                       "py-3 rounded-2xl",
@@ -61,7 +68,7 @@ export default function BottomNav() {
                   {label}
                 </span>
                 {active && isRetro && (
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-th-success rounded-full shadow-[0_0_5px_rgba(50,205,50,0.8)]" />
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-th-success rounded-full shadow-[0_0_5px_rgb(var(--th-success)/0.8)]" />
                 )}
               </div>
             </Link>

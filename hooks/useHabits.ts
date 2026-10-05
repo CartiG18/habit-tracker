@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -17,6 +17,32 @@ import { Habit, HabitWithStats, HabitLog } from "@/types";
 import { getTodayString } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useCopy } from "@/lib/copy";
+import { emitHabitComplete } from "@/lib/themes/events";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Completion state of `habit` on the selected date, ignoring ids of deleted subtasks. */
+function statusFor(habit: Habit, log: HabitLog | undefined) {
+  const valid = new Set(habit.subtasks?.map((s) => s.id) ?? []);
+  return {
+    todayCompleted: log?.completed ?? false,
+    todayCompletedSubtasks: (log?.completedSubtasks ?? []).filter((id) => valid.has(id)),
+  };
+}
+
+/** The fields of HabitWithStats derived from history (not from the selected day). */
+function statsOf(h: HabitWithStats) {
+  return {
+    currentStreak: h.currentStreak,
+    longestStreak: h.longestStreak,
+    completionRate: h.completionRate,
+    weekLogs: h.weekLogs,
+    periodCompletions: h.periodCompletions,
+    periodTarget: h.periodTarget,
+  };
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useHabits(selectedDate: string = getTodayString()) {
   const { user } = useAuth();
@@ -25,107 +51,183 @@ export function useHabits(selectedDate: string = getTodayString()) {
   const [dateLogs, setDateLogs] = useState<Map<string, HabitLog>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  // Real-time habits listener (Enriched with stats)
+  // Latest logs for the selected date (null until the first snapshot arrives)
+  const logsRef = useRef<Map<string, HabitLog> | null>(null);
+
+  // Real-time habits listener (enriched with stats)
   useEffect(() => {
     if (!user) { setHabits([]); setLoading(false); return; }
+    let latest = 0;
     const q = query(collection(db, "habits"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const rawHabits = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() } as Habit))
-        .filter((h) => !h.archivedAt)
-        .sort((a, b) => a.order - b.order);
-      const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const run = ++latest;
+        const rawHabits = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Habit))
+          .filter((h) => !h.archivedAt)
+          .sort((a, b) => a.order - b.order);
+        try {
+          const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
+          if (run !== latest) return; // a newer snapshot superseded this one
 
-      setHabits((prev) => {
-        // Create a map of existing completion statuses from the previous state
-        // to avoid "jumping" when habits list refreshes but logs haven't yet
-        const logMap = new Map(prev.map(h => [h.id, { todayCompleted: h.todayCompleted, todayCompletedSubtasks: h.todayCompletedSubtasks }]));
-        
-        return enriched.map(h => {
-          const existing = logMap.get(h.id);
-          return {
-            ...h,
-            todayCompleted: existing ? existing.todayCompleted : h.todayCompleted,
-            todayCompletedSubtasks: existing ? existing.todayCompletedSubtasks : h.todayCompletedSubtasks
-          };
-        });
-      });
-      setLoading(false);
-    });
+          setHabits((prev) => {
+            const prevById = new Map(prev.map((h) => [h.id, h]));
+            return enriched.map((h) => {
+              // Selected-day status comes from the logs listener once it has data;
+              // before that, keep what we showed (or getHabitWithStats' today status).
+              if (logsRef.current) return { ...h, ...statusFor(h, logsRef.current.get(h.id)) };
+              const existing = prevById.get(h.id);
+              if (existing) return { ...h, todayCompleted: existing.todayCompleted, todayCompletedSubtasks: existing.todayCompletedSubtasks };
+              return selectedDate === getTodayString() ? h : { ...h, ...statusFor(h, undefined) };
+            });
+          });
+        } catch (err: any) {
+          console.error("Habit stats error:", err);
+          toast.error(err.message ?? copy.toastSaveFailed);
+        } finally {
+          if (run === latest) setLoading(false);
+        }
+      },
+      (err) => {
+        console.error("Habits listener error:", err);
+        toast.error(err.message);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
+    // copy/selectedDate are only read for fallbacks; resubscribing on them would refetch every habit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Real-time logs listener for the SELECTED date
   useEffect(() => {
     if (!user) return;
+    logsRef.current = null;
     const q = query(
       collection(db, "habitLogs"),
       where("userId", "==", user.uid),
       where("date", "==", selectedDate)
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const logMap = new Map<string, HabitLog>();
-      snapshot.docs.forEach((d) => {
-        const log = { id: d.id, ...d.data() } as HabitLog;
-        logMap.set(log.habitId, log);
-      });
-      setDateLogs(logMap);
-      
-      // Update the 'todayCompleted' (current view) status in the habits list
-      setHabits((prev) =>
-        prev.map((h) => {
-          const log = logMap.get(h.id);
-          return {
-            ...h,
-            todayCompleted: log?.completed ?? false,
-            todayCompletedSubtasks: log?.completedSubtasks || [],
-          };
-        })
-      );
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const logMap = new Map<string, HabitLog>();
+        snapshot.docs.forEach((d) => {
+          const log = { id: d.id, ...d.data() } as HabitLog;
+          logMap.set(log.habitId, log);
+        });
+        logsRef.current = logMap;
+        setDateLogs(logMap);
+        setHabits((prev) => prev.map((h) => ({ ...h, ...statusFor(h, logMap.get(h.id)) })));
+      },
+      (err) => {
+        console.error("Logs listener error:", err);
+        toast.error(err.message);
+      }
+    );
     return unsubscribe;
   }, [user, selectedDate]);
+
+  /** Recompute streaks / week dots / rates for one habit after its logs change. */
+  const refreshStats = useCallback(async (habit: Habit) => {
+    if (!user) return;
+    try {
+      const fresh = await getHabitWithStats(user.uid, habit);
+      setHabits((prev) => prev.map((h) => (h.id === habit.id ? { ...h, ...statsOf(fresh) } : h)));
+    } catch (err: any) {
+      console.error("Refresh stats error:", err);
+    }
+  }, [user]);
 
   const toggle = useCallback(async (habit: Habit, date: string = selectedDate) => {
     if (!user) return;
     try {
-      await toggleHabitLog(user.uid, habit, date);
+      const log = await toggleHabitLog(user.uid, habit, date);
+      if (log.completed) emitHabitComplete();
+      refreshStats(habit);
     } catch (err: any) {
       console.error("Toggle error:", err);
-      toast.error(err.message ?? "Failed to update habit");
+      toast.error(err.message ?? copy.toastSaveFailed);
     }
-  }, [user, selectedDate]);
+  }, [user, selectedDate, refreshStats, copy]);
 
   const toggleSubtask = useCallback(async (habit: Habit, subtaskId: string, date: string = selectedDate) => {
     if (!user) return;
     try {
-      await toggleSubtaskLog(user.uid, habit, date, subtaskId);
+      const log = await toggleSubtaskLog(user.uid, habit, date, subtaskId);
+      if (log.completed) emitHabitComplete();
+      refreshStats(habit);
     } catch (err: any) {
       console.error("Toggle subtask error:", err);
-      toast.error(err.message ?? "Failed to update subtask");
+      toast.error(err.message ?? copy.toastSaveFailed);
     }
-  }, [user, selectedDate]);
+  }, [user, selectedDate, refreshStats, copy]);
+
+  // The actions below resolve to `true` on success so callers know whether to close.
 
   const addNote = useCallback(async (habitId: string, note: string, date: string = selectedDate) => {
-    if (!user) return;
-    await updateHabitNote(user.uid, habitId, date, note);
-  }, [user, selectedDate]);
+    if (!user) return false;
+    try {
+      await updateHabitNote(user.uid, habitId, date, note);
+      return true;
+    } catch (err: any) {
+      console.error("Save note error:", err);
+      toast.error(copy.toastSaveFailed);
+      return false;
+    }
+  }, [user, selectedDate, copy]);
 
   const addHabit = useCallback(async (data: Omit<Habit, "id" | "userId" | "createdAt" | "order">) => {
-    if (!user) return;
-    await createHabit(user.uid, data);
-    toast.success(copy.toastCreated);
+    if (!user) return false;
+    try {
+      await createHabit(user.uid, data);
+      toast.success(copy.toastCreated);
+      return true;
+    } catch (err: any) {
+      console.error("Create habit error:", err);
+      toast.error(copy.toastSaveFailed);
+      return false;
+    }
   }, [user, copy]);
 
   const editHabit = useCallback(async (habitId: string, data: Partial<Habit>) => {
-    await updateHabit(habitId, data);
-    toast.success(copy.toastUpdated);
+    try {
+      await updateHabit(habitId, data);
+      toast.success(copy.toastUpdated);
+      return true;
+    } catch (err: any) {
+      console.error("Update habit error:", err);
+      toast.error(copy.toastSaveFailed);
+      return false;
+    }
   }, [copy]);
 
   const removeHabit = useCallback(async (habitId: string) => {
-    await archiveHabit(habitId);
-    toast.success(copy.toastArchived);
+    try {
+      await archiveHabit(habitId);
+      toast.success(copy.toastArchived);
+      return true;
+    } catch (err: any) {
+      console.error("Archive habit error:", err);
+      toast.error(copy.toastSaveFailed);
+      return false;
+    }
   }, [copy]);
 
   return { habits, dateLogs, loading, toggle, toggleSubtask, addNote, addHabit, editHabit, removeHabit };
+}
+
+// ─── Shared Instance ──────────────────────────────────────────────────────────
+// The dashboard runs ONE useHabits() and shares it with its cards and modals,
+// instead of each modal opening its own Firestore listeners and stats queries.
+
+export type HabitsState = ReturnType<typeof useHabits>;
+
+export const HabitsContext = createContext<HabitsState | null>(null);
+
+export function useHabitsContext(): HabitsState {
+  const ctx = useContext(HabitsContext);
+  if (!ctx) throw new Error("useHabitsContext must be used inside <HabitsContext.Provider>");
+  return ctx;
 }

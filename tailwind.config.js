@@ -11,6 +11,15 @@ module.exports = {
         mono: ["var(--font-mono)", "monospace"],
         sans: ["var(--font-sans)", "sans-serif"],
         theme: ["var(--font-theme)"],
+        display: ["var(--font-display)"],
+      },
+      // Numeric weights used throughout the components (font-500, font-700, …)
+      fontWeight: {
+        400: "400",
+        500: "500",
+        600: "600",
+        700: "700",
+        800: "800",
       },
       colors: {
         // ─── Semantic theme tokens (CSS variable–backed) ──────────────
@@ -28,27 +37,13 @@ module.exports = {
         "th-text":          "rgb(var(--th-text) / <alpha-value>)",
         "th-text-secondary":"var(--th-text-secondary)",
         "th-btn-text":      "rgb(var(--th-btn-text) / <alpha-value>)",
-
-        // ─── Legacy tokens (kept for edge cases) ─────────────────────
-        putty: {
-          DEFAULT: "#BDB7AB",
-          dark: "#8A857A",
-          light: "#E2DDD3",
-        },
-        basalt: {
-          DEFAULT: "#1A1B1E",
-          dark: "#0F0F12",
-          light: "#2A2B30",
-        },
-        amber: {
-          DEFAULT: "#FFB000",
-          dim: "rgba(255, 176, 0, 0.3)",
-          glow: "rgba(255, 176, 0, 0.6)",
-        },
-        signal: {
-          DEFAULT: "#32CD32",
-          dim: "rgba(50, 205, 50, 0.3)",
-        },
+      },
+      // Theme-aware radii (resolved via CSS vars; defaults = Tailwind's)
+      borderRadius: {
+        lg:    "var(--radius-lg, 0.5rem)",
+        xl:    "var(--radius-xl, 0.75rem)",
+        "2xl": "var(--radius-2xl, 1rem)",
+        "3xl": "var(--radius-3xl, 1.5rem)",
       },
       boxShadow: {
         "bezel-outer": "4px 4px 10px rgba(0,0,0,0.5), -2px -2px 5px rgba(255,255,255,0.4)",
@@ -62,14 +57,15 @@ module.exports = {
         "neu-out": "var(--shadow-neu-out)",
         "neu-in": "var(--shadow-neu-in)",
       },
-      backgroundImage: {
-        "graph-paper": "linear-gradient(rgba(255, 176, 0, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 176, 0, 0.1) 1px, transparent 1px)",
-      },
       animation: {
         "boot-scroll": "bootScroll 2s steps(40, end)",
         "flicker": "flicker 0.15s infinite",
         "scanline": "scanline 8s linear infinite",
         "soft-enter": "softEnter 0.5s ease-out",
+        // `backwards` (not `both`): no transform lingers afterwards, which would
+        // trap fixed-position descendants such as modals.
+        "slide-up": "slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards",
+        "fade-in": "fadeIn 0.3s ease-out backwards",
       },
       keyframes: {
         bootScroll: {
@@ -84,6 +80,14 @@ module.exports = {
         scanline: {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(100vh)" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
         },
         softEnter: {
           "0%": { opacity: "0", transform: "translateY(8px)" },

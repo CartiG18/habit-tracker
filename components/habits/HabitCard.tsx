@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Check } from "lucide-react";
 import { HabitWithStats } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
 import HabitDetailModal from "./HabitDetailModal";
+import CompletionMarker from "./CompletionMarker";
 
 interface Props {
   habit: HabitWithStats;
@@ -18,6 +18,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const { isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
   const color = HABIT_COLORS[habit.color];
   const isFrequency = habit.schedule.type === "frequency_week" || habit.schedule.type === "frequency_month";
 
@@ -34,7 +35,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
           "flex items-center gap-4 cursor-pointer transition-all duration-300 relative",
           isRetro
             ? "p-4 bg-th-screen-light border border-th-primary/20 hover:border-th-primary/50 overflow-hidden"
-            : "p-4 sm:p-5 bg-th-surface border border-th-surface-dark/10 shadow-neu-out sm:rounded-2xl rounded-xl mb-3 hover:shadow-neu-in"
+            : "p-4 sm:p-5 bg-th-surface border border-th-surface-dark/10 shadow-neu-out sm:rounded-2xl rounded-xl hover:shadow-neu-in"
         )}
       >
         {/* Retro: Scanline overlay */}
@@ -44,25 +45,24 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
 
         {/* Toggle Button / Status Indicator */}
         {habit.subtasks && habit.subtasks.length > 0 ? (
-          <button
-            onClick={handleToggle}
-            className={cn(
-              "flex-shrink-0 transition-all duration-300 flex items-center justify-center relative z-10",
-              isRetro
-                ? ["w-12 h-16 rounded-sm border-2", habit.todayCompleted ? "bg-th-success/20 text-th-success border-th-success shadow-[inset_0_0_8px_rgba(50,205,50,0.4),0_0_5px_rgba(50,205,50,0.6)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/60"]
-                : ["w-10 h-10 rounded-full", habit.todayCompleted ? "bg-th-success text-th-btn-text shadow-th-raised" : "bg-th-surface-light border border-th-surface-dark/30 shadow-neu-in text-th-text-secondary"]
-            )}
-          >
-            {isRetro ? (
+          isRetro ? (
+            <button
+              onClick={handleToggle}
+              className={cn(
+                "flex-shrink-0 transition-all duration-300 flex items-center justify-center relative z-10",
+                "w-12 h-16 rounded-sm border-2",
+                habit.todayCompleted ? "bg-th-success/20 text-th-success border-th-success shadow-[inset_0_0_8px_rgb(var(--th-success)/0.4),0_0_5px_rgb(var(--th-success)/0.6)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/60"
+              )}
+            >
               <span className="font-theme font-800 text-[10px] uppercase">
                 {Math.round(((habit.todayCompletedSubtasks?.length || 0) / habit.subtasks.length) * 100)}%
               </span>
-            ) : (
-              <span className="font-theme font-700 text-xs">
-                {habit.todayCompleted ? <Check className="w-5 h-5" strokeWidth={3} /> : `${habit.todayCompletedSubtasks?.length || 0}/${habit.subtasks.length}`}
-              </span>
-            )}
-          </button>
+            </button>
+          ) : (
+            <CompletionMarker large completed={habit.todayCompleted} onClick={handleToggle}>
+              {habit.todayCompleted ? <Icons.check className="w-5 h-5" strokeWidth={3} /> : `${habit.todayCompletedSubtasks?.length || 0}/${habit.subtasks.length}`}
+            </CompletionMarker>
+          )
         ) : isRetro ? (
           /* Mechanical Toggle Switch */
           <button
@@ -74,7 +74,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
           >
             <div className={cn(
               "w-full h-3 rounded-sm transition-colors duration-300",
-              habit.todayCompleted ? "bg-th-success shadow-[0_0_8px_rgba(50,205,50,0.8)]" : "bg-th-screen-light shadow-inner"
+              habit.todayCompleted ? "bg-th-success shadow-[0_0_8px_rgb(var(--th-success)/0.8)]" : "bg-th-screen-light shadow-inner"
             )} />
             <div className={cn(
               "w-full h-8 rounded-sm transition-all duration-300",
@@ -86,18 +86,9 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
             </div>
           </button>
         ) : (
-          /* Soft Circular Checkbox */
-          <button
-            onClick={handleToggle}
-            className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
-              habit.todayCompleted
-                ? "bg-th-success text-th-btn-text shadow-th-raised"
-                : "bg-th-surface-light border border-th-surface-dark/30 shadow-neu-in"
-            )}
-          >
-            {habit.todayCompleted && <Check className="w-5 h-5" strokeWidth={3} />}
-          </button>
+          <CompletionMarker completed={habit.todayCompleted} onClick={handleToggle}>
+            {habit.todayCompleted && <Icons.check className="w-5 h-5" strokeWidth={3} />}
+          </CompletionMarker>
         )}
 
         {/* Content */}
@@ -145,7 +136,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
                         ? "rgb(var(--th-success))"
                         : isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-surface-dark))",
                       opacity: !log.scheduled ? 0 : log.completed ? 1 : (isRetro ? 0.3 : 0.5),
-                      boxShadow: (isRetro && log.completed) ? "0 0 5px rgba(50,205,50,0.6)" : "none",
+                      boxShadow: (isRetro && log.completed) ? "0 0 5px rgb(var(--th-success) / 0.6)" : "none",
                     }}
                   />
                 ))}
@@ -168,7 +159,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
           </div>
         </div>
 
-        <ChevronRight className={cn(
+        <Icons.chevron className={cn(
           "w-5 h-5 z-10 transition-colors",
           isRetro ? "text-th-primary/40" : "text-th-surface-dark"
         )} />

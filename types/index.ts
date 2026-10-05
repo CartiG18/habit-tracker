@@ -1,6 +1,7 @@
 // ─── Theme ───────────────────────────────────────────────────────────────────
 
-export type ThemeMode = "retro" | "soft";
+/** Theme ids come from the registry in `lib/themes/index.ts`. */
+export type { ThemeId } from "@/lib/themes";
 
 // ─── Habit Colors ────────────────────────────────────────────────────────────
 
@@ -115,5 +116,5 @@ export interface User {
   createdAt: string;
   notificationsEnabled?: boolean;
   reminderTime?: string;
-  theme?: ThemeMode;
+  theme?: string; // a ThemeId; validated with isThemeId() since stored ids may be stale
 }

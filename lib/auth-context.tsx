@@ -17,6 +17,7 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { DEFAULT_THEME_ID, THEME_STORAGE_KEY, isThemeId } from "@/lib/themes";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { User } from "@/types";
 
@@ -45,13 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth state changed:", firebaseUser?.email ?? "null");
       setUser(firebaseUser);
-      if (firebaseUser) {
-        const profile = await fetchOrCreateProfile(firebaseUser);
-        setUserProfile(profile);
-      } else {
+      try {
+        setUserProfile(firebaseUser ? await fetchOrCreateProfile(firebaseUser) : null);
+      } catch (err: any) {
+        // Never leave the app stuck on the loading screen; it works without a profile doc
+        console.error("Failed to load user profile:", err);
         setUserProfile(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return unsubscribe;
   }, []);
@@ -64,14 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return userDoc.data() as User;
     }
 
+    // Start new accounts on the theme already chosen on this device
+    const storedTheme = typeof window !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
+
+    // Firestore rejects `undefined` field values, so optional fields are only
+    // included when present (e.g. accounts without a profile photo).
     const newProfile: User = {
       uid: firebaseUser.uid,
-      email: firebaseUser.email!,
-      displayName: firebaseUser.displayName ?? undefined,
-      photoURL: firebaseUser.photoURL ?? undefined,
+      email: firebaseUser.email ?? "",
+      ...(firebaseUser.displayName ? { displayName: firebaseUser.displayName } : {}),
+      ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
       createdAt: new Date().toISOString(),
       notificationsEnabled: false,
-      theme: "retro",
+      theme: isThemeId(storedTheme) ? storedTheme : DEFAULT_THEME_ID,
     };
 
     await setDoc(userRef, newProfile);

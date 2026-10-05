@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { X, Activity, TrendingUp, Archive, Edit2, Target, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { HabitWithStats } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
-import { useHabits } from "@/hooks/useHabits";
-import { useTheme } from "@/lib/theme-context";
+import { useHabitsContext } from "@/hooks/useHabits";
+import { useTheme, useIcons } from "@/lib/theme-context";
+import ModalPortal from "@/components/layout/ModalPortal";
 import { useCopy } from "@/lib/copy";
 import EditHabitModal from "./EditHabitModal";
 
@@ -19,34 +19,57 @@ interface Props {
 }
 
 export default function HabitDetailModal({ open, onClose, habit, onToggle, selectedDate }: Props) {
-  const { addNote, removeHabit, dateLogs, toggleSubtask } = useHabits(selectedDate);
+  const { addNote, removeHabit, dateLogs, toggleSubtask } = useHabitsContext();
   const currentLog = dateLogs.get(habit.id);
   const completedSubtasks = currentLog?.completedSubtasks || [];
   const { isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
   
-  const [note, setNote] = useState(dateLogs.get(habit.id)?.note ?? "");
+  const savedNote = currentLog?.note ?? "";
+  const [note, setNote] = useState(savedNote);
+  const [noteDirty, setNoteDirty] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Show the saved note (and later remote updates) unless the user is mid-edit
+  useEffect(() => {
+    if (!noteDirty) setNote(savedNote);
+  }, [savedNote, noteDirty]);
+
+  useEffect(() => () => clearTimeout(confirmTimer.current), []);
 
   if (!open) return null;
 
   async function handleSaveNote() {
     setSavingNote(true);
-    await addNote(habit.id, note);
+    const ok = await addNote(habit.id, note, selectedDate);
     setSavingNote(false);
+    if (ok) setNoteDirty(false);
   }
 
+  // Two-tap delete: first tap arms the button for 3s, second tap deletes
   async function handleArchive() {
-    await removeHabit(habit.id);
-    onClose();
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      clearTimeout(confirmTimer.current);
+      confirmTimer.current = setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    clearTimeout(confirmTimer.current);
+    const ok = await removeHabit(habit.id);
+    if (ok) onClose();
+    else setConfirmDelete(false);
   }
 
   const rate = Math.round(habit.completionRate * 100);
 
   return (
+    <ModalPortal>
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-3 sm:px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
         {/* Modal Backdrop */}
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
@@ -59,7 +82,7 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
         )}>
           {/* Inner Content Area */}
           <div className={cn(
-            "relative overflow-hidden flex flex-col max-h-[85vh]",
+            "relative overflow-hidden flex flex-col max-h-modal",
             isRetro 
               ? "bg-th-screen crt-screen rounded-lg border-[6px] border-th-surface-dark shadow-bezel-inner"
               : "bg-th-screen rounded-3xl"
@@ -71,7 +94,7 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
               </>
             )}
             
-            <div className={cn("flex-1 overflow-y-auto z-20 relative", isRetro ? "p-6" : "p-8")}>
+            <div className={cn("flex-1 overflow-y-auto overscroll-contain z-20 relative", isRetro ? "p-6" : "p-8")}>
               
               {/* Header */}
               <div className={cn("pb-4 mb-6", isRetro ? "border-b-2 border-th-primary/30" : "")}>
@@ -79,7 +102,7 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                   <div className="flex gap-4">
                     <div className={cn("flex items-center justify-center text-3xl",
                       isRetro 
-                        ? "w-14 h-14 bg-th-screen-light border-2 border-th-primary/50 shadow-[inset_0_0_10px_rgba(var(--th-primary),0.2)]"
+                        ? "w-14 h-14 bg-th-screen-light border-2 border-th-primary/50 shadow-[inset_0_0_10px_rgb(var(--th-primary)/0.2)]"
                         : "w-16 h-16 rounded-2xl bg-th-surface shadow-neu-in text-4xl"
                     )}>
                       <span className={cn(habit.todayCompleted && isRetro && "grayscale opacity-50")}>{habit.emoji}</span>
@@ -106,14 +129,14 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                           : "bg-th-surface-light text-th-text-secondary hover:text-th-text rounded-full hover:bg-th-surface-dark/20"
                       )}
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Icons.edit className="w-4 h-4" />
                     </button>
                     <button onClick={onClose} className={cn("p-2 transition-colors",
                       isRetro 
                         ? "border border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:bg-th-primary/10"
                         : "bg-th-surface-light text-th-text-secondary hover:text-th-text rounded-full hover:bg-th-surface-dark/20"
                     )}>
-                      <X className="w-4 h-4" />
+                      <Icons.close className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -127,7 +150,7 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                       ? [
                           "border-2 font-800 text-xs uppercase tracking-widest",
                           habit.todayCompleted
-                            ? "bg-th-success/20 text-th-success border-th-success shadow-[0_0_10px_rgba(var(--th-success),0.4)]"
+                            ? "bg-th-success/20 text-th-success border-th-success shadow-[0_0_10px_rgb(var(--th-success)/0.4)]"
                             : "bg-th-screen-light text-th-primary border-th-primary/50 hover:bg-th-primary/10"
                         ]
                       : [
@@ -161,7 +184,7 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                         return (
                           <div 
                             key={st.id}
-                            onClick={() => toggleSubtask(habit, st.id)}
+                            onClick={() => toggleSubtask(habit, st.id, selectedDate)}
                             className={cn(
                               "flex items-center gap-3 p-3 cursor-pointer transition-colors",
                               isRetro 
@@ -172,10 +195,10 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                             <div className={cn(
                               "w-5 h-5 flex items-center justify-center flex-shrink-0 transition-colors",
                               isRetro
-                                ? ["border-2 rounded-sm", isDone ? "bg-th-primary border-th-primary shadow-[0_0_5px_rgba(var(--th-primary),0.6)]" : "border-th-primary/50"]
+                                ? ["border-2 rounded-sm", isDone ? "bg-th-primary border-th-primary shadow-[0_0_5px_rgb(var(--th-primary)/0.6)]" : "border-th-primary/50"]
                                 : ["border-2 rounded-full", isDone ? "bg-th-success border-th-success" : "border-th-surface-dark/30"]
                             )}>
-                              {isDone && <Check className={cn("w-3 h-3", isRetro ? "text-th-btn-text" : "text-white")} strokeWidth={4} />}
+                              {isDone && <Icons.check className={cn("w-3 h-3", isRetro ? "text-th-btn-text" : "text-white")} strokeWidth={4} />}
                             </div>
                             <span className={cn(
                               "font-theme text-sm",
@@ -197,21 +220,21 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                   <div className={cn("flex flex-col items-center justify-center p-3 transition-colors",
                     isRetro ? "bg-th-screen-light/50 border border-th-primary/20" : "bg-th-surface rounded-2xl shadow-neu-in"
                   )}>
-                    <Activity className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
+                    <Icons.streak className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
                     <span className={cn("font-theme font-800 text-lg", isRetro ? "text-th-primary" : "text-th-text")}>{habit.currentStreak}</span>
                     <p className={cn("font-theme mt-1", isRetro ? "text-th-primary/50 text-[9px] uppercase tracking-widest" : "text-th-text-secondary text-xs")}>{copy.streakLabel}</p>
                   </div>
                   <div className={cn("flex flex-col items-center justify-center p-3 transition-colors",
                     isRetro ? "bg-th-screen-light/50 border border-th-primary/20" : "bg-th-surface rounded-2xl shadow-neu-in"
                   )}>
-                    <TrendingUp className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
+                    <Icons.rate className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
                     <span className={cn("font-theme font-800 text-lg", isRetro ? "text-th-primary" : "text-th-text")}>{rate}%</span>
                     <p className={cn("font-theme mt-1", isRetro ? "text-th-primary/50 text-[9px] uppercase tracking-widest" : "text-th-text-secondary text-xs")}>{copy.successLabel}</p>
                   </div>
                   <div className={cn("flex flex-col items-center justify-center p-3 transition-colors",
                     isRetro ? "bg-th-screen-light/50 border border-th-primary/20" : "bg-th-surface rounded-2xl shadow-neu-in"
                   )}>
-                    <Target className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
+                    <Icons.best className={cn("w-4 h-4 mb-1", isRetro ? "text-th-primary/40" : "text-th-primary")} />
                     <span className={cn("font-theme font-800 text-lg", isRetro ? "text-th-primary" : "text-th-text")}>{habit.longestStreak}</span>
                     <p className={cn("font-theme mt-1", isRetro ? "text-th-primary/50 text-[9px] uppercase tracking-widest" : "text-th-text-secondary text-xs")}>{copy.maxStreakLabel}</p>
                   </div>
@@ -235,9 +258,9 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                               ? 'transparent' 
                               : log.completed 
                                 ? 'rgb(var(--th-success))' 
-                                : isRetro ? 'rgb(var(--th-primary))' : 'rgba(var(--th-primary), 0.3)',
-                            border: !log.scheduled && isRetro ? '1px dashed rgba(var(--th-primary),0.3)' : 'none',
-                            boxShadow: log.completed && isRetro ? '0 0 8px rgba(var(--th-success),0.5)' : 'none'
+                                : isRetro ? 'rgb(var(--th-primary))' : 'rgb(var(--th-primary)/0.3)',
+                            border: !log.scheduled && isRetro ? '1px dashed rgb(var(--th-primary)/0.3)' : 'none',
+                            boxShadow: log.completed && isRetro ? '0 0 8px rgb(var(--th-success)/0.5)' : 'none'
                           }}
                         />
                         <span className={cn("font-theme font-700 uppercase text-[8px]",
@@ -259,8 +282,8 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                   </p>
                   <textarea
                     value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder={isRetro ? "> ENTER LOG DATA..." : "Write a note..."}
+                    onChange={(e) => { setNote(e.target.value); setNoteDirty(true); }}
+                    placeholder={copy.notePlaceholder}
                     rows={3}
                     className={cn("w-full p-3 font-theme text-sm outline-none transition-colors resize-none",
                       isRetro 
@@ -289,12 +312,12 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
                     onClick={handleArchive}
                     className={cn("w-full flex items-center justify-center gap-2 py-3 transition-colors font-theme",
                       isRetro 
-                        ? "border border-red-500/50 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 text-[10px] font-700 uppercase tracking-widest"
-                        : "text-red-500 hover:bg-red-50 text-sm font-500 rounded-xl"
+                        ? ["border text-[10px] font-700 uppercase tracking-widest", confirmDelete ? "border-red-500 bg-red-500/20 text-red-500" : "border-red-500/50 text-red-500/60 hover:text-red-500 hover:bg-red-500/10"]
+                        : ["text-sm font-500 rounded-xl", confirmDelete ? "bg-red-500 text-white" : "text-red-500 hover:bg-red-50"]
                     )}
                   >
-                    <Archive className="w-4 h-4" />
-                    {copy.deleteButton}
+                    <Icons.delete className="w-4 h-4" />
+                    {confirmDelete ? copy.deleteConfirm : copy.deleteButton}
                   </button>
                 </div>
 
@@ -304,11 +327,15 @@ export default function HabitDetailModal({ open, onClose, habit, onToggle, selec
         </div>
       </div>
 
-      <EditHabitModal 
-        open={editOpen} 
-        onClose={() => setEditOpen(false)} 
-        habit={habit} 
-      />
+      {/* Mounted only while open so the form always starts from the latest habit */}
+      {editOpen && (
+        <EditHabitModal
+          open
+          onClose={() => setEditOpen(false)}
+          habit={habit}
+        />
+      )}
     </>
+    </ModalPortal>
   );
 }

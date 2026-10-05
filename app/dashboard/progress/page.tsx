@@ -11,9 +11,9 @@ import { useAuth } from "@/lib/auth-context";
 import { HABIT_COLORS, cn } from "@/lib/utils";
 import { getHabitLogs, isScheduledDay } from "@/lib/habits";
 import { HabitWithStats, HabitLog } from "@/types";
-import { Activity, TrendingUp } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
+import toast from "react-hot-toast";
 
 // Full month calendar grid for a single habit
 function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: HabitLog[], isRetro: boolean }) {
@@ -54,19 +54,19 @@ function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: Habi
               className={cn(
                 "aspect-square flex items-center justify-center font-theme transition-all duration-300",
                 isRetro 
-                  ? ["text-[10px] font-700 border", isToday && "border-th-primary/80 shadow-[0_0_8px_rgba(var(--th-primary),0.6)]"]
+                  ? ["text-[10px] font-700 border", isToday && "border-th-primary/80 shadow-[0_0_8px_rgb(var(--th-primary)/0.6)]"]
                   : ["text-xs font-500 rounded-full", isToday && "border-2 border-th-text shadow-neu-out"]
               )}
               style={
                 !inMonth
                   ? { opacity: 0 }
                   : isFuture
-                  ? { background: isRetro ? "rgb(var(--th-screen))" : "transparent", color: isRetro ? "rgba(var(--th-primary),0.2)" : "rgba(var(--th-text), 0.3)", border: isRetro ? "1px solid rgba(var(--th-primary),0.1)" : "none" }
+                  ? { background: isRetro ? "rgb(var(--th-screen))" : "transparent", color: isRetro ? "rgb(var(--th-primary)/0.2)" : "rgb(var(--th-text)/0.3)", border: isRetro ? "1px solid rgb(var(--th-primary)/0.1)" : "none" }
                   : completed
-                  ? { background: "rgb(var(--th-success))", color: "rgb(var(--th-btn-text))", border: isRetro ? "1px solid rgb(var(--th-success))" : "none", boxShadow: isRetro ? "0 0 5px rgba(var(--th-success),0.6)" : "none" }
+                  ? { background: "rgb(var(--th-success))", color: "rgb(var(--th-btn-text))", border: isRetro ? "1px solid rgb(var(--th-success))" : "none", boxShadow: isRetro ? "0 0 5px rgb(var(--th-success)/0.6)" : "none" }
                   : scheduled
-                  ? { background: isRetro ? "rgb(var(--th-screen-light))" : "rgb(var(--th-surface-dark))", color: isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-text))", border: isRetro ? "1px dashed rgba(var(--th-primary),0.3)" : "none", opacity: isRetro ? 1 : 0.3 }
-                  : { background: "transparent", color: isRetro ? "rgba(var(--th-primary),0.1)" : "rgba(var(--th-text),0.2)", border: isRetro ? "1px solid transparent" : "none" }
+                  ? { background: isRetro ? "rgb(var(--th-screen-light))" : "rgb(var(--th-surface-dark))", color: isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-text))", border: isRetro ? "1px dashed rgb(var(--th-primary)/0.3)" : "none", opacity: isRetro ? 1 : 0.3 }
+                  : { background: "transparent", color: isRetro ? "rgb(var(--th-primary)/0.1)" : "rgb(var(--th-text)/0.2)", border: isRetro ? "1px solid transparent" : "none" }
               }
             >
               {inMonth ? getDate(day) : ""}
@@ -83,6 +83,7 @@ export default function ProgressPage() {
   const { user } = useAuth();
   const { isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
   const [view, setView] = useState<"week" | "month">("week");
   const [monthLogs, setMonthLogs] = useState<Map<string, HabitLog[]>>(new Map());
 
@@ -94,13 +95,18 @@ export default function ProgressPage() {
     const end = format(endOfMonth(today), "yyyy-MM-dd");
 
     async function loadLogs() {
-      const entries = await Promise.all(
-        habits.map(async (h) => {
-          const logs = await getHabitLogs(user!.uid, h.id, start, end);
-          return [h.id, logs] as [string, HabitLog[]];
-        })
-      );
-      setMonthLogs(new Map(entries));
+      try {
+        const entries = await Promise.all(
+          habits.map(async (h) => {
+            const logs = await getHabitLogs(user!.uid, h.id, start, end);
+            return [h.id, logs] as [string, HabitLog[]];
+          })
+        );
+        setMonthLogs(new Map(entries));
+      } catch (err: any) {
+        console.error("Month logs error:", err);
+        toast.error(copy.toastSaveFailed);
+      }
     }
     loadLogs();
   }, [view, user, habits.length]);
@@ -111,7 +117,7 @@ export default function ProgressPage() {
         <p className={cn("font-theme transition-colors mb-1", isRetro ? "text-th-primary/60 text-xs uppercase tracking-widest" : "text-th-text-secondary text-sm")}>
           {copy.progressModule}
         </p>
-        <h1 className={cn("font-theme transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
+        <h1 className={cn("font-display transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
           {copy.progressTitle}
         </h1>
       </div>
@@ -131,7 +137,7 @@ export default function ProgressPage() {
               isRetro 
                 ? [
                     "text-[10px] font-800 uppercase tracking-widest",
-                    view === v ? "bg-th-primary text-th-btn-text shadow-[0_0_10px_rgba(var(--th-primary),0.5)]" : "text-th-primary/50 hover:text-th-primary hover:bg-th-primary/10"
+                    view === v ? "bg-th-primary text-th-btn-text shadow-[0_0_10px_rgb(var(--th-primary)/0.5)]" : "text-th-primary/50 hover:text-th-primary hover:bg-th-primary/10"
                   ]
                 : [
                     "text-sm font-500 rounded-xl",
@@ -149,7 +155,7 @@ export default function ProgressPage() {
         <h2 className={cn("font-theme mb-4 flex items-center gap-2 pb-2 transition-colors",
           isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "text-th-text-secondary text-sm font-500"
         )}>
-          <Activity className="w-3 h-3" /> {copy.streaksSection}
+          <Icons.streak className="w-3 h-3" /> {copy.streaksSection}
         </h2>
         <div className="space-y-3">
           {[...habits]
@@ -189,7 +195,7 @@ export default function ProgressPage() {
                   )}>
                     <div
                       className={cn("h-full transition-all duration-1000 ease-out",
-                        isRetro ? "bg-th-success shadow-[0_0_5px_rgba(var(--th-success),0.6)]" : "bg-th-success rounded-full"
+                        isRetro ? "bg-th-success shadow-[0_0_5px_rgb(var(--th-success)/0.6)]" : "bg-th-success rounded-full"
                       )}
                       style={{ width: `${pct * 100}%` }}
                     />
@@ -205,7 +211,7 @@ export default function ProgressPage() {
         <h2 className={cn("font-theme mb-4 flex items-center gap-2 pb-2 transition-colors",
           isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "text-th-text-secondary text-sm font-500"
         )}>
-          <TrendingUp className="w-3 h-3" /> {copy.overviewSection}
+          <Icons.rate className="w-3 h-3" /> {copy.overviewSection}
         </h2>
         <div className="space-y-4">
           {habits.map((habit, i) => {
@@ -256,9 +262,9 @@ export default function ProgressPage() {
                               ? 'transparent' 
                               : log.completed 
                                 ? 'rgb(var(--th-success))' 
-                                : isRetro ? 'rgb(var(--th-primary))' : 'rgba(var(--th-primary), 0.3)',
-                            border: !log.scheduled && isRetro ? '1px dashed rgba(var(--th-primary),0.3)' : 'none',
-                            boxShadow: log.completed && isRetro ? '0 0 8px rgba(var(--th-success),0.5)' : 'none'
+                                : isRetro ? 'rgb(var(--th-primary))' : 'rgb(var(--th-primary)/0.3)',
+                            border: !log.scheduled && isRetro ? '1px dashed rgb(var(--th-primary)/0.3)' : 'none',
+                            boxShadow: log.completed && isRetro ? '0 0 8px rgb(var(--th-success)/0.5)' : 'none'
                           }}
                         />
                         <span className={cn("font-theme transition-colors",

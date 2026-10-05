@@ -41,8 +41,8 @@ export default function DailyProgress({ completed, total, allDone }: Props) {
                 style={{
                   height: isActive ? `${Math.max(10, Math.random() * 80 + 20)}%` : '4px',
                   background: isActive ? (allDone ? "rgb(var(--th-success))" : "rgb(var(--th-primary))") : "rgb(var(--th-screen))",
-                  border: isActive ? "none" : "1px solid rgba(var(--th-primary), 0.3)",
-                  boxShadow: isActive ? `0 0 5px ${allDone ? "rgba(var(--th-success), 0.6)" : "rgba(var(--th-primary), 0.6)"}` : "none",
+                  border: isActive ? "none" : "1px solid rgb(var(--th-primary)/0.3)",
+                  boxShadow: isActive ? `0 0 5px ${allDone ? "rgb(var(--th-success)/0.6)" : "rgb(var(--th-primary)/0.6)"}` : "none",
                 }}
               />
             );

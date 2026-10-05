@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { useHabits } from "@/hooks/useHabits";
-import { HABIT_COLORS, DAYS, EMOJI_OPTIONS, cn } from "@/lib/utils";
+import { useState } from "react";
+import { useHabitsContext } from "@/hooks/useHabits";
+import { HABIT_COLORS, DAYS, EMOJI_OPTIONS, cn, makeId } from "@/lib/utils";
 import { HabitColor, DayOfWeek, HabitSchedule, Habit, Subtask } from "@/types";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
+import ModalPortal from "@/components/layout/ModalPortal";
 import { useCopy } from "@/lib/copy";
 
 interface Props {
@@ -18,9 +18,10 @@ const COLOR_OPTIONS: HabitColor[] = ["green","blue","purple","orange","pink","re
 type ScheduleType = "weekly" | "monthly_dates" | "frequency_week" | "frequency_month";
 
 export default function EditHabitModal({ open, onClose, habit }: Props) {
-  const { editHabit } = useHabits();
+  const { editHabit } = useHabitsContext();
   const { isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
 
   const [name, setName] = useState(habit.name);
   const [description, setDescription] = useState(habit.description ?? "");
@@ -48,27 +49,6 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
 
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setName(habit.name);
-    setDescription(habit.description ?? "");
-    setEmoji(habit.emoji);
-    setColor(habit.color);
-    setScheduleType(habit.schedule.type);
-    setSubtasks(habit.subtasks || []);
-    
-    if (habit.schedule.type === "weekly") {
-      setSelectedDays(habit.schedule.days);
-    }
-    if (habit.schedule.type === "monthly_dates") {
-      setSelectedDates(habit.schedule.dates);
-    }
-    if (habit.schedule.type === "frequency_week") {
-      setFreqCount(habit.schedule.timesPerWeek);
-    }
-    if (habit.schedule.type === "frequency_month") {
-      setFreqCount(habit.schedule.timesPerMonth);
-    }
-  }, [habit]);
 
   function toggleDay(day: DayOfWeek) {
     setSelectedDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
@@ -102,7 +82,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
     if (!isValid()) return;
     setSaving(true);
     const finalSubtasks = subtasks.filter(st => st.title.trim() !== "");
-    await editHabit(habit.id, { 
+    const ok = await editHabit(habit.id, { 
       name: name.trim(), 
       description, 
       emoji, 
@@ -111,7 +91,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
       subtasks: finalSubtasks
     });
     setSaving(false);
-    onClose();
+    if (ok) onClose();
   }
 
   if (!open) return null;
@@ -124,7 +104,8 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <ModalPortal>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-3 sm:px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
       <div className={cn(
@@ -134,7 +115,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
           : "bg-th-screen border border-th-surface-dark/20 rounded-3xl shadow-neu-out p-1"
       )}>
         <div className={cn(
-          "relative overflow-hidden flex flex-col max-h-[85vh]",
+          "relative overflow-hidden flex flex-col max-h-modal",
           isRetro 
             ? "bg-th-screen crt-screen rounded-lg border-[6px] border-th-surface-dark shadow-bezel-inner"
             : "bg-th-screen rounded-3xl"
@@ -146,7 +127,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
             </>
           )}
 
-          <div className={cn("flex-1 overflow-y-auto z-20 relative", isRetro ? "p-6" : "p-8")}>
+          <div className={cn("flex-1 overflow-y-auto overscroll-contain z-20 relative", isRetro ? "p-6" : "p-8")}>
             <div className={cn("flex items-center justify-between mb-6 pb-4", isRetro ? "border-b border-th-primary/30" : "")}>
               <h2 className={cn(
                 "font-theme text-xl transition-colors",
@@ -160,7 +141,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                   ? "border border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:bg-th-primary/10 rounded-none"
                   : "bg-th-surface-light text-th-text-secondary hover:bg-th-surface-dark/20"
               )}>
-                <X className="w-5 h-5" />
+                <Icons.close className="w-5 h-5" />
               </button>
             </div>
 
@@ -173,7 +154,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                 <div className="mt-2">
                   <div className={cn("inline-flex items-center justify-center w-16 h-16 text-3xl transition-all duration-200",
                         isRetro 
-                          ? "bg-th-screen-light/30 border-2 border-th-primary shadow-[inset_0_0_10px_rgba(var(--th-primary),0.2)]"
+                          ? "bg-th-screen-light/30 border-2 border-th-primary shadow-[inset_0_0_10px_rgb(var(--th-primary)/0.2)]"
                           : "bg-th-surface rounded-2xl shadow-neu-in border border-th-surface-dark/20"
                       )}>
                     <input
@@ -248,7 +229,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                     <button key={tab.value} onClick={() => setScheduleType(tab.value)}
                       className={cn("py-2 px-1 font-theme transition-all",
                         isRetro 
-                          ? ["text-[10px] font-700", scheduleType === tab.value ? "bg-th-primary text-th-btn-text shadow-[0_0_5px_rgba(var(--th-primary),0.5)]" : "text-th-primary/50 hover:bg-th-primary/10"]
+                          ? ["text-[10px] font-700", scheduleType === tab.value ? "bg-th-primary text-th-btn-text shadow-[0_0_5px_rgb(var(--th-primary)/0.5)]" : "text-th-primary/50 hover:bg-th-primary/10"]
                           : ["text-xs font-500 rounded-lg", scheduleType === tab.value ? "bg-th-screen shadow-neu-out text-th-text" : "text-th-text-secondary hover:text-th-text"]
                       )}>
                       {tab.label}
@@ -263,7 +244,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                       <button key={value} onClick={() => toggleDay(value)}
                         className={cn("flex-1 py-3 transition-all duration-200 font-theme font-700",
                           isRetro 
-                            ? ["text-[9px] border", selectedDays.includes(value) ? "bg-th-primary/20 text-th-primary border-th-primary shadow-[inset_0_0_8px_rgba(var(--th-primary),0.4)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/40 hover:text-th-primary/80"]
+                            ? ["text-[9px] border", selectedDays.includes(value) ? "bg-th-primary/20 text-th-primary border-th-primary shadow-[inset_0_0_8px_rgb(var(--th-primary)/0.4)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/40 hover:text-th-primary/80"]
                             : ["text-xs rounded-xl", selectedDays.includes(value) ? "bg-th-primary text-th-btn-text shadow-th-raised" : "bg-th-surface text-th-text-secondary hover:bg-th-surface-dark/20"]
                         )}>
                         {short}
@@ -307,13 +288,13 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
               <div className={cn("pt-4", isRetro ? "border-t border-th-primary/20" : "")}>
                 <div className="flex justify-between items-center mb-2">
                   <label className={cn("font-theme transition-colors", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
-                    {copy.dataPrefix || "SUBTASKS"}
+                    {copy.subtasksLabel}
                   </label>
-                  <button onClick={() => setSubtasks(s => [...s, { id: crypto.randomUUID(), title: '' }])}
+                  <button onClick={() => setSubtasks(s => [...s, { id: makeId(), title: '' }])}
                     className={cn("transition-colors font-theme", 
                       isRetro ? "text-[10px] font-700 text-th-primary hover:text-th-primary/80 uppercase tracking-widest" : "text-sm text-th-primary font-500 hover:text-th-primary-dim"
                     )}>
-                    + ADD SUBTASK
+                    {copy.addSubtaskButton}
                   </button>
                 </div>
                 
@@ -327,7 +308,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                         <input 
                           value={st.title}
                           onChange={e => setSubtasks(s => s.map(x => x.id === st.id ? { ...x, title: e.target.value } : x))}
-                          placeholder="Subtask description..."
+                          placeholder={copy.subtaskPlaceholder}
                           className={cn("flex-1 bg-transparent outline-none font-theme py-1 px-2 transition-colors",
                             isRetro ? "text-th-primary text-sm placeholder-th-primary/20 uppercase" : "text-th-text text-sm placeholder-th-text-secondary"
                           )}
@@ -336,7 +317,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                           className={cn("p-1.5 transition-colors", 
                             isRetro ? "text-red-500/60 hover:text-red-500 hover:bg-red-500/10" : "text-th-text-secondary hover:text-red-500 hover:bg-red-50 rounded-full"
                           )}>
-                          <X className="w-4 h-4" />
+                          <Icons.close className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
@@ -348,7 +329,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
             <button onClick={handleSave} disabled={!isValid() || saving}
               className={cn("w-full mt-8 py-4 transition-all duration-300 font-theme disabled:opacity-40",
                 isRetro 
-                  ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(var(--th-primary),0.4)]"
+                  ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgb(var(--th-primary)/0.4)]"
                   : "bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
               )}>
               {saving ? copy.savingText : copy.updateButton}
@@ -357,5 +338,6 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

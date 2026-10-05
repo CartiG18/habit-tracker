@@ -21,20 +21,29 @@ export function useDailyPlan(date: string) {
     }
     setLoading(true);
     const ref = doc(db, "dailyPlans", `${user.uid}_${date}`);
-    const unsubscribe = onSnapshot(ref, (snap) => {
-      setPlan(snap.exists() ? (snap.data() as DailyPlan) : null);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        setPlan(snap.exists() ? (snap.data() as DailyPlan) : null);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Daily plan listener error:", err);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
   }, [user, date]);
 
   const savePlan = useCallback(async (habitIds: string[]) => {
-    if (!user) return;
+    if (!user) return false;
     try {
       await saveDailyPlan(user.uid, date, habitIds);
+      return true;
     } catch (err: any) {
       console.error("Save plan error:", err);
       toast.error(err.message ?? "Failed to save plan");
+      return false;
     }
   }, [user, date]);
 

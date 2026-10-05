@@ -1,23 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Roboto } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { ThemeAwareToaster } from "@/components/layout/ThemeAwareToaster";
+import { ThemeOverlay } from "@/components/layout/ThemeOverlay";
+import { WallpaperProvider } from "@/lib/wallpaper-context";
+import { fontVariables } from "@/lib/themes/fonts";
+import {
+  DEFAULT_THEME_ID,
+  THEMES,
+  THEME_STORAGE_KEY,
+  isThemeId,
+  buildThemeInitScript,
+  buildThemeStylesheet,
+} from "@/lib/themes";
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-  weight: ["400", "500", "700", "800"],
-});
-
-const roboto = Roboto({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  weight: ["400", "500", "700"],
-});
+/** Theme id from the cookie written by ThemeProvider (falls back to the default). */
+function themeFromCookie() {
+  const stored = cookies().get(THEME_STORAGE_KEY)?.value;
+  return isThemeId(stored) ? stored : DEFAULT_THEME_ID;
+}
 
 export const metadata: Metadata = {
   title: "SYNAPSE // Terminal",
@@ -33,28 +36,48 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#BDB7AB",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+export function generateViewport(): Viewport {
+  return {
+    themeColor: THEMES[themeFromCookie()].metaColor,
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    // Draw edge-to-edge on notched phones; layouts pad with env(safe-area-inset-*)
+    viewportFit: "cover",
+  };
+}
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const theme = themeFromCookie();
+
   return (
-    <html lang="en">
-      <body
-        className={`${jetbrainsMono.variable} ${roboto.variable} font-theme bg-th-surface text-th-primary antialiased`}
-      >
+    <html
+      lang="en"
+      data-theme={theme}
+      data-wallpaper={THEMES[theme].wallpaper ? "theme" : undefined}
+      className={`${fontVariables} theme-${THEMES[theme].base}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Tokens for every theme, generated from lib/themes/ */}
+        <style dangerouslySetInnerHTML={{ __html: buildThemeStylesheet() }} />
+        {/* Apply the stored theme before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: buildThemeInitScript() }} />
+      </head>
+      <body className="font-theme antialiased">
+        <div className="wallpaper-layer" aria-hidden><div /></div>
         <AuthProvider>
-          <ThemeProvider>
-            {children}
-            <ThemeAwareToaster />
+          <ThemeProvider initialTheme={theme}>
+            <WallpaperProvider>
+              {children}
+              <ThemeOverlay />
+              <ThemeAwareToaster />
+            </WallpaperProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

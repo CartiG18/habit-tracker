@@ -2,8 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { format, subDays, isSameDay, startOfDay } from "date-fns";
-import { Plus, ClipboardList } from "lucide-react";
-import { useHabits } from "@/hooks/useHabits";
+import { useHabits, HabitsContext } from "@/hooks/useHabits";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
 import HabitCard from "@/components/habits/HabitCard";
 import AddHabitModal from "@/components/habits/AddHabitModal";
@@ -13,7 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { isScheduledDay } from "@/lib/habits";
 import { formatDateString, getTodayString } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
 
 export default function DashboardPage() {
@@ -23,11 +22,14 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const dateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
   
-  const { habits, loading, toggle } = useHabits(dateString);
+  const habitsState = useHabits(dateString);
+  const { habits, loading, toggle } = habitsState;
   const { plan, loading: planLoading, savePlan } = useDailyPlan(dateString);
   const { user } = useAuth();
-  const { isRetro } = useTheme();
+  const { isRetro, def } = useTheme();
+  const framed = def.selection === "frame";
   const copy = useCopy();
+  const Icons = useIcons();
   const [addOpen, setAddOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
 
@@ -69,7 +71,7 @@ export default function DashboardPage() {
   }, 0);
   const allDone = filteredHabits.length > 0 && Math.round(completedCount * 100) === filteredHabits.length * 100;
 
-  const firstName = user?.displayName?.split(" ")[0] ?? (isRetro ? "OPERATOR" : "User");
+  const firstName = user?.displayName?.split(" ")[0] ?? copy.userFallback;
   const displayName = isRetro ? firstName.toUpperCase() : firstName;
 
   if (!mounted) {
@@ -87,13 +89,14 @@ export default function DashboardPage() {
   }
 
   return (
+    <HabitsContext.Provider value={habitsState}>
     <div className="px-4 pt-8 max-w-lg mx-auto pb-32 relative z-20">
       {/* Header */}
       <div className={cn("mb-6 flex flex-col pb-4", isRetro ? "border-b border-th-primary/30" : "")}>
         <p className={cn("transition-colors", isRetro ? "text-th-primary/60 font-theme text-xs uppercase tracking-widest mb-1" : "text-th-text-secondary font-theme text-sm mb-1")}>
           {copy.dateLabelPrefix} {isSameDay(selectedDate, today) ? copy.dateLabelCurrent : format(selectedDate, isRetro ? "yyyy.MM.dd" : "MMMM d, yyyy")}
         </p>
-        <h1 className={cn("font-theme transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
+        <h1 className={cn("font-display transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
           {copy.greetingPrefix} {displayName}
         </h1>
       </div>
@@ -117,8 +120,15 @@ export default function DashboardPage() {
                   ? [
                       "w-11 py-2",
                       isSelected 
-                        ? "bg-th-primary text-th-btn-text font-800 shadow-[0_0_10px_rgba(var(--th-primary),0.5)]" 
+                        ? "bg-th-primary text-th-btn-text font-800 shadow-[0_0_10px_rgb(var(--th-primary)/0.5)]" 
                         : "text-th-primary/60 hover:bg-th-primary/10 hover:text-th-primary"
+                    ]
+                  : framed
+                  ? [
+                      "w-12 py-3 rounded-xl transition-transform duration-200",
+                      isSelected
+                        ? "sel-frame text-th-text font-700 scale-105"
+                        : "text-th-text-secondary hover:text-th-text hover:scale-110 active:scale-110"
                     ]
                   : [
                       "w-12 py-3 rounded-xl",
@@ -154,7 +164,7 @@ export default function DashboardPage() {
             : "bg-th-surface rounded-2xl shadow-neu-out text-th-text text-sm font-500 hover:shadow-neu-in"
         )}
       >
-        <ClipboardList className="w-4 h-4" />
+        <Icons.plan className="w-4 h-4" />
         {plan ? copy.planButtonEdit : copy.planButtonCreate}
       </button>
 
@@ -169,7 +179,9 @@ export default function DashboardPage() {
       <div className="space-y-3 relative z-30">
         <div className={cn("flex justify-between items-center pb-2 mb-2 transition-colors", isRetro ? "border-b border-th-primary/30" : "")}>
            <span className={cn("transition-colors", isRetro ? "text-th-primary/60 text-xs font-theme uppercase tracking-widest" : "text-th-text-secondary text-sm font-theme font-500")}>{copy.activeHabits}</span>
-           <span className={cn("transition-colors", isRetro ? "text-th-primary/60 text-xs font-theme" : "text-th-text-secondary text-sm font-theme")}>[{filteredHabits.length}]</span>
+           <span className={cn("transition-colors font-theme", isRetro ? "text-th-primary/60 text-xs" : "min-w-[1.75rem] px-2 py-0.5 rounded-full bg-th-surface-dark/30 text-center text-th-text-secondary text-xs font-600")}>
+             {isRetro ? `[${filteredHabits.length}]` : filteredHabits.length}
+           </span>
         </div>
 
         {loading ? (
@@ -181,14 +193,14 @@ export default function DashboardPage() {
             isRetro ? "border border-dashed border-th-primary/30 bg-th-screen-light/20" : "bg-th-surface rounded-3xl shadow-neu-in"
           )}>
             <div className={cn("text-2xl mb-2 animate-pulse", isRetro ? "text-th-primary/40" : "text-th-text-secondary")}>
-              {isRetro ? "_" : "○"}
+              {copy.emptyEmblem}
             </div>
             <p className={cn("font-theme transition-colors", isRetro ? "text-th-primary/60 text-sm uppercase" : "text-th-text-secondary text-base font-500")}>{copy.noHabits}</p>
             <p className={cn("transition-colors mt-1 font-theme", isRetro ? "text-th-primary/40 text-[10px] uppercase" : "text-th-text-secondary/60 text-xs")}>{copy.noHabitsHint}</p>
           </div>
         ) : (
           filteredHabits.map((habit, i) => (
-            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
+            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
               <HabitCard 
                 habit={habit} 
                 onToggle={() => toggle(habit, dateString)} 
@@ -208,24 +220,29 @@ export default function DashboardPage() {
                 : "bg-th-surface/50 rounded-xl text-th-text-secondary text-sm font-500 hover:bg-th-surface"
             )}
           >
-            <Plus className="w-4 h-4" />
+            <Icons.add className="w-4 h-4" />
             {copy.addToPlanButton}
           </button>
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB — anchored to the app column (not the window edge) and lifted above the home indicator */}
+      <div className="fixed inset-x-0 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-40 flex justify-center pointer-events-none">
+      <div className="relative w-full max-w-lg h-0">
       <button
         onClick={() => setAddOpen(true)}
+        aria-label={copy.addHabitTitle}
         className={cn(
-          "fixed bottom-28 right-6 flex items-center justify-center transition-all z-40 group",
+          "absolute bottom-0 right-6 pointer-events-auto flex items-center justify-center transition-all group",
           isRetro 
             ? "w-14 h-14 bg-th-surface border-2 border-th-surface-dark rounded-md shadow-th-raised active:shadow-th-inset active:translate-y-0.5"
-            : "w-16 h-16 bg-th-primary rounded-full shadow-[0_8px_20px_rgba(var(--th-primary),0.4)] active:scale-95 active:shadow-[0_4px_10px_rgba(var(--th-primary),0.4)]"
+            : "w-16 h-16 bg-th-primary rounded-full shadow-[0_8px_20px_rgb(var(--th-primary)/0.4)] active:scale-95 active:shadow-[0_4px_10px_rgb(var(--th-primary)/0.4)]"
         )}
       >
-        <Plus className={cn("group-hover:scale-110 transition-transform duration-200", isRetro ? "w-6 h-6 text-th-btn-text" : "w-8 h-8 text-th-btn-text")} strokeWidth={isRetro ? 3 : 2.5} />
+        <Icons.add className={cn("group-hover:scale-110 transition-transform duration-200", isRetro ? "w-6 h-6 text-th-btn-text" : "w-8 h-8 text-th-btn-text")} strokeWidth={isRetro ? 3 : 2.5} />
       </button>
+      </div>
+      </div>
 
       <AddHabitModal open={addOpen} onClose={() => setAddOpen(false)} />
       <DailyPlanModal
@@ -236,5 +253,6 @@ export default function DashboardPage() {
         onSave={savePlan}
       />
     </div>
+    </HabitsContext.Provider>
   );
 }

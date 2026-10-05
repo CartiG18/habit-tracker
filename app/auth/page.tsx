@@ -37,11 +37,11 @@ export default function AuthPage() {
             <div className="absolute inset-0 bg-graph-paper pointer-events-none opacity-20"></div>
             
             <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-th-screen-light border-2 border-th-primary/50 flex items-center justify-center text-4xl mb-6 shadow-[inset_0_0_15px_rgba(255,176,0,0.3)]">
-                <span className="animate-pulse">⚡</span>
+              <div className="w-20 h-20 bg-th-screen-light border-2 border-th-primary/50 flex items-center justify-center text-4xl mb-6 shadow-[inset_0_0_15px_rgb(var(--th-primary)/0.3)]">
+                <span className="animate-pulse">{copy.appEmblem}</span>
               </div>
               
-              <h1 className="font-theme text-3xl font-800 text-th-primary text-glow uppercase tracking-widest mb-2">
+              <h1 className="font-display text-3xl font-800 text-th-primary text-glow uppercase tracking-widest mb-2">
                 {copy.appTitle}
               </h1>
               <p className="text-th-primary/60 font-theme text-xs uppercase tracking-[0.3em] mb-10">
@@ -52,7 +52,7 @@ export default function AuthPage() {
                 onClick={signInWithGoogle}
                 className={`w-full py-4 border-2 font-theme font-800 text-sm uppercase tracking-widest transition-all duration-300 ${
                   init 
-                    ? "bg-th-primary/10 text-th-primary border-th-primary shadow-[0_0_15px_rgba(255,176,0,0.4)] hover:bg-th-primary hover:text-th-btn-text" 
+                    ? "bg-th-primary/10 text-th-primary border-th-primary shadow-[0_0_15px_rgb(var(--th-primary)/0.4)] hover:bg-th-primary hover:text-th-btn-text" 
                     : "bg-th-screen-light text-th-primary/30 border-th-primary/30"
                 }`}
               >
@@ -74,10 +74,10 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-th-screen shadow-neu-out rounded-3xl p-10 flex flex-col items-center text-center border border-th-surface-dark animate-soft-enter">
         <div className="w-20 h-20 rounded-2xl bg-th-surface flex items-center justify-center text-4xl mb-6 shadow-neu-in">
-          <span className="animate-pulse">⚡</span>
+          <span className="animate-pulse">{copy.appEmblem}</span>
         </div>
         
-        <h1 className="font-theme text-3xl font-700 text-th-text mb-2">
+        <h1 className="font-display text-3xl font-700 text-th-text mb-2">
           {copy.appTitle}
         </h1>
         <p className="text-th-text-secondary font-theme text-sm mb-10">

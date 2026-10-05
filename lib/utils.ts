@@ -54,3 +54,12 @@ export function formatDateString(d: Date): string {
 export function getTodayString(): string {
   return formatDateString(new Date());
 }
+
+/**
+ * Random id for client-side items (e.g. subtasks). `crypto.randomUUID` only
+ * exists in secure contexts, so phones testing over http://<LAN-IP> need a fallback.
+ */
+export function makeId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}

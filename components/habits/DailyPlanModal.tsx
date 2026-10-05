@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Check } from "lucide-react";
 import { Habit, DailyPlan } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
 import { defaultPlanHabitIds, isEveryDayHabit, scheduleLabel } from "@/lib/habits";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme, useIcons } from "@/lib/theme-context";
+import ModalPortal from "@/components/layout/ModalPortal";
 import { useCopy } from "@/lib/copy";
 
 interface Props {
@@ -13,19 +13,23 @@ interface Props {
   onClose: () => void;
   habits: Habit[];
   plan: DailyPlan | null;
-  onSave: (habitIds: string[]) => Promise<void>;
+  onSave: (habitIds: string[]) => Promise<boolean>;
 }
 
 export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: Props) {
   const { isRetro } = useTheme();
   const copy = useCopy();
+  const Icons = useIcons();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
+  // Initialise the selection when the modal opens — not on every habits/plan
+  // update, which would wipe the user's taps while the modal is open.
   useEffect(() => {
     if (!open) return;
     setSelected(new Set(plan ? plan.habitIds : defaultPlanHabitIds(habits)));
-  }, [open, plan, habits]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function toggleHabit(id: string) {
     setSelected((prev) => {
@@ -38,15 +42,16 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
 
   async function handleSave() {
     setSaving(true);
-    await onSave(Array.from(selected));
+    const ok = await onSave(Array.from(selected));
     setSaving(false);
-    onClose();
+    if (ok) onClose();
   }
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <ModalPortal>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 sm:px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
       <div className={cn(
@@ -56,7 +61,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
           : "bg-th-screen border border-th-surface-dark/20 rounded-3xl shadow-neu-out p-1"
       )}>
         <div className={cn(
-          "relative overflow-hidden flex flex-col max-h-[85vh]",
+          "relative overflow-hidden flex flex-col max-h-modal",
           isRetro
             ? "bg-th-screen crt-screen rounded-lg border-[6px] border-th-surface-dark shadow-bezel-inner"
             : "bg-th-screen rounded-3xl"
@@ -68,7 +73,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
             </>
           )}
 
-          <div className={cn("flex-1 overflow-y-auto z-20 relative flex flex-col", isRetro ? "p-6" : "p-8")}>
+          <div className={cn("flex-1 overflow-y-auto overscroll-contain z-20 relative flex flex-col", isRetro ? "p-6" : "p-8")}>
             {/* Header */}
             <div className={cn("flex items-center justify-between mb-2 pb-4", isRetro ? "border-b border-th-primary/30" : "")}>
               <h2 className={cn(
@@ -83,7 +88,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
                   ? "border border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:bg-th-primary/10 rounded-none"
                   : "bg-th-surface-light text-th-text-secondary hover:bg-th-surface-dark/20"
               )}>
-                <X className="w-5 h-5" />
+                <Icons.close className="w-5 h-5" />
               </button>
             </div>
 
@@ -124,7 +129,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
                           ? ["border", isSelected ? "bg-th-primary border-th-primary text-th-btn-text" : "border-th-primary/40 text-transparent"]
                           : ["rounded-full", isSelected ? "bg-th-primary text-th-btn-text" : "border border-th-surface-dark/30 text-transparent"]
                       )}>
-                        <Check className="w-4 h-4" strokeWidth={3} />
+                        <Icons.check className="w-4 h-4" strokeWidth={3} />
                       </div>
                       <span className="text-lg" style={{ color: HABIT_COLORS[h.color].hex }}>{h.emoji}</span>
                       <div className="flex-1 min-w-0">
@@ -150,7 +155,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
             <button onClick={handleSave} disabled={saving}
               className={cn("w-full mt-6 py-4 transition-all duration-300 font-theme disabled:opacity-40",
                 isRetro
-                  ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(var(--th-primary),0.4)]"
+                  ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgb(var(--th-primary)/0.4)]"
                   : "bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
               )}>
               {saving ? copy.savingText : copy.planSaveButton}
@@ -159,5 +164,6 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

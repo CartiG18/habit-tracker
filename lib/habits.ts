@@ -58,9 +58,9 @@ export function scheduleLabel(schedule: HabitSchedule): string {
     case "weekly":
       if (schedule.days.length === 7) return "Every day";
       if (schedule.days.length === 5 && schedule.days.every((d) => [1,2,3,4,5].includes(d))) return "Weekdays";
-      return schedule.days.sort().map((d) => DAY_NAMES[d]).join(", ");
+      return [...schedule.days].sort((a, b) => a - b).map((d) => DAY_NAMES[d]).join(", ");
     case "monthly_dates":
-      return schedule.dates.sort((a, b) => a - b).map(ordinal).join(", ");
+      return [...schedule.dates].sort((a, b) => a - b).map(ordinal).join(", ");
     case "frequency_week":
       return `${schedule.timesPerWeek}× per week`;
     case "frequency_month":
@@ -113,13 +113,16 @@ export async function toggleHabitLog(userId: string, habit: Habit, date: string)
   const logId = `${userId}_${habit.id}_${date}`;
   const logRef = doc(db, "habitLogs", logId);
   const existing = await getDoc(logRef);
-  if (existing.exists() && existing.data().completed) {
-    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: false, completedSubtasks: [] };
+  const prev = existing.exists() ? (existing.data() as HabitLog) : null;
+  // Preserve the day's note — setDoc replaces the whole document
+  const keepNote = prev?.note ? { note: prev.note } : {};
+  if (prev?.completed) {
+    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: false, completedSubtasks: [], ...keepNote };
     await setDoc(logRef, log);
     return log;
   } else {
     const allSubtasks = habit.subtasks?.map(s => s.id) || [];
-    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: true, completedAt: new Date().toISOString(), completedSubtasks: allSubtasks };
+    const log: HabitLog = { id: logId, habitId: habit.id, userId, date, completed: true, completedAt: new Date().toISOString(), completedSubtasks: allSubtasks, ...keepNote };
     await setDoc(logRef, log);
     return log;
   }
@@ -129,13 +132,15 @@ export async function toggleSubtaskLog(userId: string, habit: Habit, date: strin
   const logId = `${userId}_${habit.id}_${date}`;
   const logRef = doc(db, "habitLogs", logId);
   const existing = await getDoc(logRef);
-  
+  const validIds = new Set(habit.subtasks?.map((s) => s.id) ?? []);
+
   let completedSubtasks: string[] = [];
   let note = "";
   
   if (existing.exists()) {
     const data = existing.data() as HabitLog;
-    completedSubtasks = data.completedSubtasks || [];
+    // Drop ids of subtasks that have since been deleted from the habit
+    completedSubtasks = (data.completedSubtasks || []).filter((id) => validIds.has(id));
     note = data.note || "";
     
     if (completedSubtasks.includes(subtaskId)) {
@@ -237,7 +242,9 @@ export function calculateStreak(habit: Habit, logs: HabitLog[]): { current: numb
   : habit.schedule.type === "frequency_month"
   ? habit.schedule.timesPerMonth
   : 1;
-    let current = 0, longest = 0, running = 0;
+    // Walk back period by period. The current period never breaks the streak
+    // (it isn't over yet); the first missed past period closes `current`.
+    let current = 0, longest = 0, running = 0, currentOpen = true;
     let periodStart = new Date();
 
     for (let p = 0; p < 52; p++) {
@@ -252,17 +259,20 @@ export function calculateStreak(habit: Habit, logs: HabitLog[]): { current: numb
 
       if (completions >= target) {
         running++;
-        if (p === 0 || (isCurrentPeriod && current === running - 1)) current = running;
+        if (currentOpen) current = running;
         longest = Math.max(longest, running);
       } else if (!isCurrentPeriod) {
         running = 0;
+        currentOpen = false;
       }
       periodStart = subDays(pStart, 1);
     }
     return { current, longest };
   }
 
-  let current = 0, longest = 0, runningStreak = 0;
+  // Walk back day by day. Today never breaks the streak (it isn't over yet);
+  // the first missed scheduled day before today closes `current`.
+  let current = 0, longest = 0, runningStreak = 0, currentOpen = true;
   let checkDate = new Date();
   for (let i = 0; i < 365; i++) {
     const dateStr = format(checkDate, "yyyy-MM-dd");
@@ -270,10 +280,11 @@ export function calculateStreak(habit: Habit, logs: HabitLog[]): { current: numb
       const completed = logMap.get(dateStr) ?? false;
       if (completed) {
         runningStreak++;
-        if (i === 0 || current === runningStreak - 1) current = runningStreak;
+        if (currentOpen) current = runningStreak;
         longest = Math.max(longest, runningStreak);
       } else if (dateStr < today) {
         runningStreak = 0;
+        currentOpen = false;
       }
     }
     checkDate = subDays(checkDate, 1);
