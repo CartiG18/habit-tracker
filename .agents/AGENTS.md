@@ -17,8 +17,8 @@ The application supports any number of themes, each defined in one file under `l
 **Internal metaphor:** A retro NASA / Cold War–era hardware terminal. The UI presents a CRT monitor recessed into a putty-colored mechanical bezel, complete with screws, scanlines, oscilloscope bar charts, and glowing amber text.
 **Tone of voice:** `ALL_CAPS`, `SNAKE_CASE` labels. Terse, technical jargon (e.g., `INIT_NEW_PROCESS`, `OPERATOR_LOG`). Habits are **"processes"**, streaks are **"sequences"**.
 
-### Theme B: Soft Focus
-**Internal metaphor:** A modern, clean, calming interface. Uses parchment/paper-like backgrounds, soft neumorphic shadows, rounded corners, and gentle typography.
+### Theme B: Foundation (soft base)
+**Internal metaphor:** A dark, data-forward, premium dashboard (Whoop-like). Near-black base, solid cards, no decoration; hierarchy from size, weight and gray value. Color only carries meaning (success = done, danger = destructive). Styled through tokens plus semantic `th-*` hook classes (see §13).
 **Tone of voice:** Standard sentence casing, encouraging and simple English (e.g., "New Habit", "Notes"). Habits are "habits", streaks are "streaks".
 
 Do **not** hardcode copy or colors. Always use the `useCopy()` hook for text and `th-*` prefixed tailwind classes for styling.
@@ -107,7 +107,7 @@ The app uses semantic CSS variables mapped to Tailwind classes (`th-*`).
 Colors are used for habit dots and streaks. They are vibrant enough to work as CRT phosphor, but also work on the soft parchment.
 
 ### Typography
-- `font-theme`: the active theme's body font (`fonts.body`): JetBrains Mono for Retro, Roboto for Soft.
+- `font-theme`: the active theme's body font (`fonts.body`): JetBrains Mono for Retro, Roboto for Foundation, KG Kiss Me Slowly for Princess.
 - `font-display`: the active theme's title font (`fonts.display`, defaults to body). Use it on page `<h1>`s.
 - Fonts are registered once in `lib/themes/fonts.ts`; themes reference them by key.
 - **Conditional Styling:** Use the `cn()` utility to apply different font weights and text transforms based on `isRetro`. For example: `cn("font-theme", isRetro ? "font-800 uppercase tracking-widest text-glow text-th-primary" : "font-500 text-th-text")`
@@ -226,6 +226,21 @@ All modals follow the same bezel-inside-CRT pattern:
 - The schedule system uses a discriminated union (`HabitSchedule`) — always switch
   on `.type` and handle all four cases.
 
+### Scheduling & stats rules
+- Pure schedule helpers live in `lib/schedule.ts` (no Firebase) so the client and the
+  reminder route agree: `isHabitDue(habit, date)` = active (start/end, not paused) AND scheduled.
+- Rest days (`skipped`) and inactive days are **neutral**: they never break a streak and are
+  excluded from completion rates. Frequency habits count streaks in weeks/months; a past
+  period only breaks if completions + excused days couldn't reach the target.
+- Rewriting a log with `setDoc` must carry over `note` (see `lib/habits.ts` writers).
+- Archive (`removeHabit`) is the default "remove"; permanent delete (`deleteForever`) removes all logs.
+
+### Reminders (push)
+- Client: `lib/push.ts` → `enablePush(uid)` registers `public/firebase-messaging-sw.js`
+  (config passed in its URL) and saves the FCM token + time zone on the user doc.
+- Server: `GET /api/reminders` (needs `Authorization: Bearer $CRON_SECRET`) sends due
+  per-habit and daily reminders; call it every 15 minutes from a scheduler.
+
 ### Date handling
 - Dates are stored and transmitted as `"YYYY-MM-DD"` strings.
 - Use `formatDateString()` from `lib/utils.ts` for local date → string conversion.
@@ -244,6 +259,9 @@ users/{userId}
   createdAt: string (ISO)
   notificationsEnabled?: boolean
   reminderTime?: string ("HH:mm")
+  timeZone?: string (IANA, used by the reminder server)
+  fcmTokens?: string[] (push tokens)
+  lastDailyReminderDate?: string
 
 habits/{habitId}  (auto-ID)
   userId: string
@@ -253,8 +271,13 @@ habits/{habitId}  (auto-ID)
   color: HabitColor
   schedule: HabitSchedule
   createdAt: string (ISO)
-  archivedAt?: string (ISO, soft-delete)
-  order: number
+  archivedAt?: string (ISO — archived: hidden, history kept, restorable)
+  order: number (manual order; set by Arrange)
+  startDate? / endDate?: "YYYY-MM-DD" (active range, inclusive)
+  pausedFrom? / pausedUntil?: "YYYY-MM-DD" (paused range; no until = until resumed)
+  timeOfDay?: "morning" | "afternoon" | "evening" (dashboard sections)
+  measure?: { target, unit, step } (measurable habit)
+  reminder?: { enabled, time "HH:mm", onlyIfNotDone, lastSentDate? }
 
 habitLogs/{userId}_{habitId}_{YYYY-MM-DD}  (deterministic ID)
   id: string
@@ -262,7 +285,9 @@ habitLogs/{userId}_{habitId}_{YYYY-MM-DD}  (deterministic ID)
   userId: string
   date: string ("YYYY-MM-DD")
   completed: boolean
-  note?: string
+  skipped?: boolean (rest day — neutral for streaks and rates)
+  value?: number (measurable habits; completed when value >= target)
+  note?: string (per-day note)
   completedAt?: string (ISO)
 ```
 
@@ -339,8 +364,14 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 NEXT_PUBLIC_FIREBASE_APP_ID
 ```
 
+Push reminders also need:
+```
+NEXT_PUBLIC_FIREBASE_VAPID_KEY   # Firebase console → Cloud Messaging → Web Push certificates
+```
+
 ### Server-side only
 ```
+CRON_SECRET                      # shared secret for GET /api/reminders
 FIREBASE_ADMIN_PROJECT_ID
 FIREBASE_ADMIN_CLIENT_EMAIL
 FIREBASE_ADMIN_PRIVATE_KEY
@@ -358,7 +389,7 @@ Before submitting any new code, verify:
 - [ ] No hex/rgb literals for theme colors. Use `th-*` classes, or `rgb(var(--th-primary)/0.4)` inside arbitrary values and inline styles. (Never `rgba(var(--th-x),a)`: the vars hold space-separated channels, so that is invalid CSS.)
 - [ ] Text is supplied by `useCopy()`; absolutely no hardcoded strings.
 - [ ] Retro mode adheres to terminal jargon, uppercase text, and `font-theme`.
-- [ ] Soft mode adheres to clean, lowercase/sentence-case text.
+- [ ] Soft-base themes (Foundation, Princess) use clean, sentence-case text.
 - [ ] Modals and shells branch correctly to render mechanical bezels vs soft rounded cards.
 - [ ] Uses semantic color tokens (`th-primary`, `th-screen`, `th-surface`) — no hardcoded colors.
 - [ ] Data operations go through `lib/habits.ts` → `hooks/useHabits.ts`.
@@ -376,7 +407,8 @@ lib/themes/
 ├── types.ts     ThemeDefinition: the shape of a theme
 ├── fonts.ts     next/font registry (FontKey → --font-<key>)
 ├── retro.ts     Retro Terminal (base theme for base: "retro")
-├── soft.ts      Soft Focus     (base theme for base: "soft")
+├── soft-base.ts shared base for every base: "soft" theme (not registered; changing it changes Foundation AND Princess)
+├── foundation.ts Foundation (dark, data-forward; extends soft-base)
 ├── extend.ts    extendTheme(): derive a theme from a base
 ├── events.ts    emitHabitComplete() / onHabitComplete() for theme overlays
 ├── wallpaper.ts wallpaper adjustment types + `--wallpaper-*` var mapping
@@ -387,6 +419,7 @@ lib/themes/
 - `app/layout.tsx` renders `buildThemeStylesheet()` as an inline `<style>`: one `html[data-theme="<id>"]{--th-*…}` block per theme. It also renders `buildThemeInitScript()`, which applies the stored theme before first paint.
 - `<html>` carries `data-theme="<id>"` (which token set applies) and `class="theme-<base>"` (which structural CSS in `globals.css` applies).
 - `lib/wallpaper-context.tsx` (`useWallpaper()`) holds the user's on-device wallpaper (downscaled photo in localStorage) and adjustments; the `<head>` script applies them before first paint.
+- Theme ids that get renamed stay readable via `LEGACY_THEME_IDS` / `resolveThemeId()` (e.g. `soft` → `foundation`); always read stored ids through `resolveThemeId()`.
 - Users can recolor a theme's `surface`, `screen`, `primary`, `success` and `text` in Preferences → Colors (per theme, on-device; companion shades are derived in `lib/themes/colors.ts`). Theme defaults are always offered as swatches, so a theme's `colors` are the reset values.
 - `useTheme()` returns `{ theme, def, base, isRetro, isSoft, setTheme }`. `def` is the full definition. `useCopy()` returns `def.copy`.
 - The settings picker, toaster, boot animation and browser `theme-color` all read from the registry. Nothing else needs editing.
@@ -396,9 +429,9 @@ lib/themes/
    ```ts
    import { Trees } from "lucide-react";
    import { extendTheme } from "@/lib/themes/extend";
-   import { soft } from "@/lib/themes/soft";
+   import { softBase } from "@/lib/themes/soft-base";
 
-   export const forest = extendTheme(soft, {
+   export const forest = extendTheme(softBase, {
      name: "Forest",
      description: "Moss & morning fog",
      icon: Trees,
@@ -437,12 +470,14 @@ lib/themes/
 | `markerFill` | completed star gradient `{ stops: [light, mid, deep], glow }` (e.g. Princess gold) |
 | `icons.*` | every UI icon by role (`close`, `check`, `chevron`, `add`, `plan`, `streak`, `rate`, `best`, `edit`, `delete`, `appearance`, `notifications`, `account`, `logout`, `upload`, `reset`). Base themes use `LUCIDE_ICONS`; override any subset. Components draw icons only via `const Icons = useIcons(); <Icons.close …/>` — never import lucide icons directly. |
 | `toastIcons` | colors of the toast success/error icons |
+| `habitDecor` | `false` hides per-habit emoji + color everywhere (cards, detail, plan, progress) and removes their pickers from the add/edit forms. UI-only: habits still save the default emoji/color. Gate new emoji/color UI on `def.habitDecor !== false`. |
 | `selection`, `frameFill` | how the selected day / nav tab is shown: `"fill"` (raised chip) or `"frame"` (no background, gradient `.sel-frame` ring in `frameFill` colors, hover/press enlarges) |
 | `effects.*` | glow, scanlines, flicker, grid (visible on retro base) |
 | `bootLines` | dashboard boot animation (retro base; `[]` skips it) |
 | `toast` | react-hot-toast style (use `var(--th-*)` to inherit colors) |
 | `metaColor` | browser / PWA status-bar color |
 | `css(selector)` | raw CSS scoped to the theme, for anything else |
+| `th-*` hook classes | semantic, unstyled-by-default classes components carry so a theme's `css()` can restyle them without touching other themes: `th-card`, `th-label`, `th-hero`, `th-stat`, `th-track`, `th-marker`, `th-btn-primary`, `th-day` (+ `aria-pressed`). Add one to a component instead of changing a shared class list. |
 | `overlay` | client component drawn above the app (decorations, effects). Put it in `components/themes/<id>/`. |
 
 A theme that needs a genuinely new *structure* (not just new styling) needs a new base. That means adding to `ThemeBase` and branching components on it. Prefer tokens and `css()` first.

@@ -97,7 +97,7 @@ export default function WallpaperSettings() {
 
   return (
     <div className="px-5 pb-5 relative z-10 space-y-4">
-      <p className="font-theme text-sm font-500 text-th-text-secondary">{copy.wallpaperLabel}</p>
+      <p className="th-label font-theme text-sm font-500 text-th-text-secondary">{copy.wallpaperLabel}</p>
 
       <div className="flex gap-4 items-start">
         {/* Live preview — phone-shaped, draggable */}

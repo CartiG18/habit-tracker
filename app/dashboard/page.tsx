@@ -9,7 +9,10 @@ import AddHabitModal from "@/components/habits/AddHabitModal";
 import DailyPlanModal from "@/components/habits/DailyPlanModal";
 import DailyProgress from "@/components/habits/DailyProgress";
 import { useAuth } from "@/lib/auth-context";
-import { isScheduledDay } from "@/lib/habits";
+import { isHabitActive, isHabitDue, isPausedOn } from "@/lib/schedule";
+import ArrangeList from "@/components/habits/ArrangeList";
+import PausedHabits from "@/components/habits/PausedHabits";
+import { HabitWithStats, TimeOfDay } from "@/types";
 import { formatDateString, getTodayString } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useTheme, useIcons } from "@/lib/theme-context";
@@ -23,7 +26,7 @@ export default function DashboardPage() {
   const dateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
   
   const habitsState = useHabits(dateString);
-  const { habits, loading, toggle } = habitsState;
+  const { habits, loading, toggle, reorder } = habitsState;
   const { plan, loading: planLoading, savePlan } = useDailyPlan(dateString);
   const { user } = useAuth();
   const { isRetro, def } = useTheme();
@@ -32,6 +35,7 @@ export default function DashboardPage() {
   const Icons = useIcons();
   const [addOpen, setAddOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [arranging, setArranging] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
 
@@ -42,9 +46,21 @@ export default function DashboardPage() {
 
   // Habits shown for the selected day: the day's plan if one exists,
   // otherwise fall back to whatever is scheduled that day.
+  // Paused / out-of-range habits never show, even if they were planned.
   const filteredHabits = plan
-    ? habits.filter((h) => plan.habitIds.includes(h.id))
-    : habits.filter((h) => isScheduledDay(h.schedule, selectedDate));
+    ? habits.filter((h) => plan.habitIds.includes(h.id) && isHabitActive(h, dateString))
+    : habits.filter((h) => isHabitDue(h, selectedDate));
+  const pausedHabits = habits.filter((h) => isPausedOn(h, dateString));
+
+  // Time-of-day sections — only once at least one habit has a time set
+  const TIME_ORDER: (TimeOfDay | "anytime")[] = ["morning", "afternoon", "evening", "anytime"];
+  const grouped = filteredHabits.some((h) => h.timeOfDay)
+    ? TIME_ORDER.map((t) => ({ key: t, items: filteredHabits.filter((h) => (h.timeOfDay ?? "anytime") === t) })).filter((g) => g.items.length)
+    : [{ key: null, items: filteredHabits }];
+  const groupLabel: Record<TimeOfDay | "anytime", string> = {
+    morning: copy.todMorning, afternoon: copy.todAfternoon, evening: copy.todEvening, anytime: copy.todAnytime,
+  };
+  const GroupIcon = (t: TimeOfDay | "anytime") => (t === "anytime" ? null : t === "morning" ? Icons.morning : t === "afternoon" ? Icons.afternoon : Icons.evening);
 
   function closePlanModal() {
     setPlanOpen(false);
@@ -63,13 +79,17 @@ export default function DashboardPage() {
     if (localStorage.getItem(key)) return;
     setPlanOpen(true);
   }, [mounted, user, loading, planLoading, plan, dateString]);
-  const completedCount = filteredHabits.reduce((acc, h) => {
+  // Rest days leave the day's total; measurable + subtask habits count partially
+  const countable = filteredHabits.filter((h) => !h.todaySkipped || h.todayCompleted);
+  const completedCount = countable.reduce((acc, h: HabitWithStats) => {
+    if (h.todayCompleted) return acc + 1;
+    if (h.measure) return acc + Math.min((h.todayValue ?? 0) / h.measure.target, 1);
     if (h.subtasks && h.subtasks.length > 0) {
       return acc + (h.todayCompletedSubtasks?.length || 0) / h.subtasks.length;
     }
-    return acc + (h.todayCompleted ? 1 : 0);
+    return acc;
   }, 0);
-  const allDone = filteredHabits.length > 0 && Math.round(completedCount * 100) === filteredHabits.length * 100;
+  const allDone = countable.length > 0 && Math.round(completedCount * 100) === countable.length * 100;
 
   const firstName = user?.displayName?.split(" ")[0] ?? copy.userFallback;
   const displayName = isRetro ? firstName.toUpperCase() : firstName;
@@ -93,8 +113,9 @@ export default function DashboardPage() {
     <div className="px-4 pt-8 max-w-lg mx-auto pb-32 relative z-20">
       {/* Header */}
       <div className={cn("mb-6 flex flex-col pb-4", isRetro ? "border-b border-th-primary/30" : "")}>
-        <p className={cn("transition-colors", isRetro ? "text-th-primary/60 font-theme text-xs uppercase tracking-widest mb-1" : "text-th-text-secondary font-theme text-sm mb-1")}>
-          {copy.dateLabelPrefix} {isSameDay(selectedDate, today) ? copy.dateLabelCurrent : format(selectedDate, isRetro ? "yyyy.MM.dd" : "MMMM d, yyyy")}
+        <p className={cn("th-date transition-colors", isRetro ? "text-th-primary/60 font-theme text-xs uppercase tracking-widest mb-1" : "text-th-text-secondary font-theme text-sm mb-1")}>
+          {/* Themes may write "{date}" in dateLabelCurrent to show today's full date */}
+          {copy.dateLabelPrefix} {isSameDay(selectedDate, today) ? copy.dateLabelCurrent.replace("{date}", format(selectedDate, "EEEE, MMM d")) : format(selectedDate, isRetro ? "yyyy.MM.dd" : "MMMM d, yyyy")}
         </p>
         <h1 className={cn("font-display transition-colors", isRetro ? "text-xl font-800 text-th-primary uppercase text-glow" : "text-3xl font-700 text-th-text")}>
           {copy.greetingPrefix} {displayName}
@@ -102,7 +123,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Date Navigator */}
-      <div className={cn("flex justify-between items-center mb-6 transition-colors", 
+      <div className={cn("th-daystrip flex justify-between items-center mb-6 transition-colors", 
         isRetro 
           ? "bg-th-screen-light/50 border border-th-primary/30 p-1" 
           : "bg-th-surface p-1 rounded-2xl shadow-neu-in"
@@ -114,8 +135,9 @@ export default function DashboardPage() {
             <button
               key={day.toISOString()}
               onClick={() => setSelectedDate(day)}
+              aria-pressed={isSelected}
               className={cn(
-                "flex flex-col items-center justify-center transition-all duration-150 relative",
+                "th-day flex flex-col items-center justify-center transition-all duration-150 relative",
                 isRetro 
                   ? [
                       "w-11 py-2",
@@ -158,7 +180,7 @@ export default function DashboardPage() {
       <button
         onClick={() => setPlanOpen(true)}
         className={cn(
-          "w-full mb-6 flex items-center justify-center gap-2 py-3 transition-all font-theme",
+          "th-ghost w-full mb-6 flex items-center justify-center gap-2 py-3 transition-all font-theme",
           isRetro
             ? "border border-th-primary/40 text-th-primary bg-th-screen-light/30 hover:bg-th-primary/10 text-xs font-700 uppercase tracking-widest"
             : "bg-th-surface rounded-2xl shadow-neu-out text-th-text text-sm font-500 hover:shadow-neu-in"
@@ -169,22 +191,36 @@ export default function DashboardPage() {
       </button>
 
       {/* Progress section */}
-      {filteredHabits.length > 0 && (
+      {countable.length > 0 && (
         <div className="mb-6">
-          <DailyProgress completed={completedCount} total={filteredHabits.length} allDone={allDone} />
+          <DailyProgress completed={completedCount} total={countable.length} allDone={allDone} />
         </div>
       )}
 
       {/* Habit list */}
       <div className="space-y-3 relative z-30">
         <div className={cn("flex justify-between items-center pb-2 mb-2 transition-colors", isRetro ? "border-b border-th-primary/30" : "")}>
-           <span className={cn("transition-colors", isRetro ? "text-th-primary/60 text-xs font-theme uppercase tracking-widest" : "text-th-text-secondary text-sm font-theme font-500")}>{copy.activeHabits}</span>
-           <span className={cn("transition-colors font-theme", isRetro ? "text-th-primary/60 text-xs" : "min-w-[1.75rem] px-2 py-0.5 rounded-full bg-th-surface-dark/30 text-center text-th-text-secondary text-xs font-600")}>
-             {isRetro ? `[${filteredHabits.length}]` : filteredHabits.length}
-           </span>
+           <span className={cn("transition-colors", isRetro ? "text-th-primary/60 text-xs font-theme uppercase tracking-widest" : "th-label text-th-text-secondary text-sm font-theme font-500")}>{copy.activeHabits}</span>
+           <div className="flex items-center gap-3">
+             {habits.length > 1 && (
+               <button
+                 onClick={() => setArranging((a) => !a)}
+                 className={cn("th-ghost flex items-center gap-1.5 font-theme transition-colors",
+                   isRetro ? "text-th-primary/60 hover:text-th-primary text-[10px] font-700 uppercase tracking-widest" : "text-th-text-secondary hover:text-th-text text-xs font-500")}
+               >
+                 <Icons.grip className="w-3.5 h-3.5" />
+                 {arranging ? copy.cancelButton : copy.arrangeButton}
+               </button>
+             )}
+             <span className={cn("transition-colors font-theme", isRetro ? "text-th-primary/60 text-xs" : "min-w-[1.75rem] px-2 py-0.5 rounded-full bg-th-surface-dark/30 text-center text-th-text-secondary text-xs font-600")}>
+               {isRetro ? `[${filteredHabits.length}]` : filteredHabits.length}
+             </span>
+           </div>
         </div>
 
-        {loading ? (
+        {arranging ? (
+          <ArrangeList habits={habits} onDone={async (ids) => { await reorder(ids); setArranging(false); }} />
+        ) : loading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className={cn("h-24 animate-pulse", isRetro ? "border border-th-primary/30 bg-th-primary-dim" : "bg-th-surface rounded-2xl")} />
           ))
@@ -199,22 +235,38 @@ export default function DashboardPage() {
             <p className={cn("transition-colors mt-1 font-theme", isRetro ? "text-th-primary/40 text-[10px] uppercase" : "text-th-text-secondary/60 text-xs")}>{copy.noHabitsHint}</p>
           </div>
         ) : (
-          filteredHabits.map((habit, i) => (
-            <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
-              <HabitCard 
-                habit={habit} 
-                onToggle={() => toggle(habit, dateString)} 
-                selectedDate={dateString}
-              />
-            </div>
-          ))
+          grouped.map((group) => {
+            const Icon = group.key ? GroupIcon(group.key) : null;
+            return (
+              <div key={group.key ?? "all"} className="space-y-3">
+                {group.key && (
+                  <p className={cn("th-label flex items-center gap-2 pt-2 font-theme",
+                    isRetro ? "text-th-primary/50 text-[10px] font-700 uppercase tracking-widest" : "text-th-text-secondary text-sm font-500")}>
+                    {Icon && <Icon className="w-4 h-4" />}
+                    {groupLabel[group.key]}
+                  </p>
+                )}
+                {group.items.map((habit, i) => (
+                  <div key={`${habit.id}-${dateString}`} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
+                    <HabitCard 
+                      habit={habit} 
+                      onToggle={() => toggle(habit, dateString)} 
+                      selectedDate={dateString}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })
         )}
 
-        {!loading && (
+        {!loading && !arranging && <PausedHabits habits={pausedHabits} />}
+
+        {!loading && !arranging && (
           <button
             onClick={() => setPlanOpen(true)}
             className={cn(
-              "w-full flex items-center justify-center gap-2 py-3 transition-all font-theme",
+              "th-ghost w-full flex items-center justify-center gap-2 py-3 transition-all font-theme",
               isRetro
                 ? "border border-dashed border-th-primary/30 text-th-primary/60 hover:text-th-primary hover:border-th-primary/60 text-xs font-700 uppercase tracking-widest"
                 : "bg-th-surface/50 rounded-xl text-th-text-secondary text-sm font-500 hover:bg-th-surface"
@@ -233,7 +285,7 @@ export default function DashboardPage() {
         onClick={() => setAddOpen(true)}
         aria-label={copy.addHabitTitle}
         className={cn(
-          "absolute bottom-0 right-6 pointer-events-auto flex items-center justify-center transition-all group",
+          "th-fab absolute bottom-0 right-6 pointer-events-auto flex items-center justify-center transition-all group",
           isRetro 
             ? "w-14 h-14 bg-th-surface border-2 border-th-surface-dark rounded-md shadow-th-raised active:shadow-th-inset active:translate-y-0.5"
             : "w-16 h-16 bg-th-primary rounded-full shadow-[0_8px_20px_rgb(var(--th-primary)/0.4)] active:scale-95 active:shadow-[0_4px_10px_rgb(var(--th-primary)/0.4)]"

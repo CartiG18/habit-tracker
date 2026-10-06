@@ -260,3 +260,180 @@ export function ChevronIcon({ className }: LucideProps) {
     </GoldIcon>
   );
 }
+
+// ─── Habit States ─────────────────────────────────────────────────────────────
+
+/** Rest day — a sleepy cloud with drifting z's */
+export function RestCloudIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M7 19.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.9 11 4.25 4.25 0 0 0 7 19.5z" fill={PINK_LIGHT} stroke={PINK} strokeWidth={1.3} />
+          <path d="M9.3 15q1 .9 2 0M12.8 15q1 .9 2 0" stroke={PINK} strokeWidth={1.1} />
+          <path d="M17.5 3h3l-3 3.2h3" stroke={gold} strokeWidth={1.5} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Archive — a treasure chest */
+export function ChestIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M3.5 11h17v8.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z" fill={PINK} />
+          <path d="M3.5 11V9a5 5 0 0 1 5-5h7a5 5 0 0 1 5 5v2z" fill={PINK_LIGHT} stroke={PINK} strokeWidth={1.1} />
+          <path d="M3.5 11h17M8 4.6V21M16 4.6V21" stroke={gold} strokeWidth={1.5} />
+          <rect x="10.4" y="10" width="3.2" height="4" rx="0.8" fill={gold} stroke={GOLD_EDGE} strokeWidth={0.6} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Pause — an hourglass */
+export function HourglassIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M6 3h12M6 21h12" stroke={gold} strokeWidth={2.2} />
+          <path d="M7.5 3.5c0 4.5 4.5 5.5 4.5 8.5s-4.5 4-4.5 8.5M16.5 3.5c0 4.5-4.5 5.5-4.5 8.5s4.5 4 4.5 8.5" stroke={gold} strokeWidth={1.5} />
+          <path d="M9.2 6.5h5.6c-.4 1.6-2 2.6-2.8 3.8-.8-1.2-2.4-2.2-2.8-3.8zM8.8 20q.6-3.4 3.2-4.2 2.6.8 3.2 4.2z" fill={PINK} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Resume — a golden play arrow with a glint */
+export function PlaySparkIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M7 4.8v14.4a1 1 0 0 0 1.5.9l11.3-7.2a1 1 0 0 0 0-1.8L8.5 3.9A1 1 0 0 0 7 4.8z" fill={gold} stroke={GOLD_EDGE} strokeWidth={0.8} />
+          <Glint x={4} y={5} r={1.5} fill={PINK} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** History — an open storybook */
+export function StorybookIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M12 6.5C9.5 4.8 6.5 4.5 3 5v13.5c3.5-.5 6.5-.2 9 1.5 2.5-1.7 5.5-2 9-1.5V5c-3.5-.5-6.5-.2-9 1.5z" fill={CREAM} stroke={gold} strokeWidth={1.6} />
+          <path d="M12 6.5V20" stroke={gold} strokeWidth={1.4} />
+          <path d="M5.5 9.5q2.5-.4 4.5.5M5.5 12.5q2.5-.4 4.5.5M14 10q2-.9 4.5-.5" stroke={PINK} strokeWidth={1.1} />
+          <path d="M16.2 12.3c-.9-.5-1.2-1-1.2-1.4a.6.6 0 0 1 1.2-.2.6.6 0 0 1 1.2.2c0 .4-.3.9-1.2 1.4z" fill={PINK} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Drag handle — two columns of gold pearls */
+export function PearlGripIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          {[6, 12, 18].map((y) => (
+            <g key={y}>
+              <circle cx="9" cy={y} r="1.7" fill={gold} />
+              <circle cx="15" cy={y} r="1.7" fill={gold} />
+            </g>
+          ))}
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+// ─── Time of Day ──────────────────────────────────────────────────────────────
+
+/** Morning — sunrise over a pink horizon */
+export function SunriseIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M6 17a6 6 0 0 1 12 0z" fill={gold} />
+          <path d="M12 4.5v2.5M4.6 9.6l1.8 1.5M19.4 9.6l-1.8 1.5" stroke={gold} strokeWidth={1.6} />
+          <path d="M2.5 17.5h19M6 20.5h12" stroke={PINK} strokeWidth={1.6} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Afternoon — a full golden sun */
+export function SunIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <circle cx="12" cy="12" r="4.5" fill={gold} stroke={GOLD_EDGE} strokeWidth={0.8} />
+          <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" stroke={PINK} strokeWidth={1.6} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Evening — a crescent moon with a twinkling star */
+export function MoonStarIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <path d="M15.5 19.5A8 8 0 0 1 10.6 4a7 7 0 1 0 9.2 10.8 8 8 0 0 1-4.3 4.7z" fill={gold} stroke={GOLD_EDGE} strokeWidth={0.8} />
+          <Glint x={18.5} y={6} r={2.2} fill={PINK} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+
+/** Dates — a gilded calendar page */
+export function CalendarIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => (
+        <>
+          <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill={CREAM} stroke={gold} strokeWidth={1.6} />
+          <path d="M3.5 9.5h17" stroke={gold} strokeWidth={1.6} />
+          <path d="M8 3v4M16 3v4" stroke={gold} strokeWidth={1.8} />
+          <path d="M12 17.6c-1.8-1.1-2.6-2.1-2.6-3a1.3 1.3 0 0 1 2.6-.5 1.3 1.3 0 0 1 2.6.5c0 .9-.8 1.9-2.6 3z" fill={PINK} />
+        </>
+      )}
+    </GoldIcon>
+  );
+}
+
+/** Increment — a golden plus */
+export function PlusGoldIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => <path d="M12 5v14M5 12h14" stroke={gold} strokeWidth={2.6} />}
+    </GoldIcon>
+  );
+}
+
+/** Decrement — a golden minus */
+export function MinusGoldIcon({ className }: LucideProps) {
+  return (
+    <GoldIcon className={className}>
+      {(gold) => <path d="M5 12h14" stroke={gold} strokeWidth={2.6} />}
+    </GoldIcon>
+  );
+}

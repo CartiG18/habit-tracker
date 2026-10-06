@@ -2,11 +2,13 @@ import { LayoutTemplate, Cpu, Activity, SlidersHorizontal } from "lucide-react";
 import type { ThemeDefinition } from "@/lib/themes/types";
 import { LUCIDE_ICONS } from "@/lib/themes/lucideIcons";
 
-// ─── Soft Focus ───────────────────────────────────────────────────────────────
-// Calm parchment paper, neumorphic shadows, rounded cards.
-// Base theme for every `base: "soft"` theme.
+// ─── Soft Base ────────────────────────────────────────────────────────────────
+// Shared starting point for every `base: "soft"` theme (rounded-card skeleton):
+// calm parchment paper, neumorphic shadows and plain, friendly copy.
+// Not registered as a theme itself — Foundation and Princess extend it, so
+// changing a value here changes BOTH. Put theme-specific looks in their files.
 
-export const soft: ThemeDefinition = {
+export const softBase: ThemeDefinition = {
   name: "Soft Focus",
   description: "Clean, modern look",
   icon: LayoutTemplate,
@@ -23,6 +25,7 @@ export const soft: ThemeDefinition = {
     success:      "#66BB6A", // sage
     text:         "#3A3A3A", // charcoal
     btnText:      "#FFFFFF",
+    danger:       "#EF4444",
   },
   opacity: {
     primaryDim: 0.12,
@@ -132,7 +135,7 @@ export const soft: ThemeDefinition = {
     planEmptyState: "No habits yet — create one first",
     planAutoTag: "Every day",
     planSaveButton: "Save Plan",
-    addToPlanButton: "+ Add a habit",
+    addToPlanButton: "Add a habit",
   
     // Progress page
     progressModule: "Progress",
@@ -196,11 +199,61 @@ export const soft: ThemeDefinition = {
     // Toasts
     toastCreated: "Habit created",
     toastUpdated: "Habit updated",
-    toastArchived: "Habit deleted",
+    toastArchived: "Habit archived",
     toastPermDenied: "Permission denied",
     toastAlertsOn: "Reminders enabled",
     toastAlertsOff: "Reminders disabled",
     toastNotifUnsupported: "Notifications aren't supported in this browser — try adding the app to your home screen",
     toastSaveFailed: "Couldn't save — please try again",
+    streakUnitDay: "day",
+    streakUnitWeek: "wk",
+    streakUnitMonth: "mo",
+    skipButton: "Skip (rest day)",
+    unskipButton: "Undo skip",
+    skippedLabel: "Rest day",
+    archiveButton: "Archive",
+    archivedSection: "Archived habits",
+    archivedEmpty: "Nothing archived",
+    restoreButton: "Restore",
+    pauseButton: "Pause",
+    resumeButton: "Resume",
+    pausedSection: "Paused",
+    pausedUntil: "Until {date}",
+    pausedIndefinitely: "Until you resume",
+    pauseUntilLabel: "Resume on (optional)",
+    pauseConfirm: "Pause habit",
+    toastRestored: "Habit restored",
+    toastPaused: "Habit paused",
+    toastResumed: "Habit resumed",
+    toastDeleted: "Habit deleted",
+    historyLabel: "History",
+    historyHint: "Tap a day to log it, skip it, or add a note",
+    statusDone: "Done",
+    statusMissed: "Missed",
+    statusOpen: "Not logged",
+    statusInactive: "Not scheduled",
+    typeLabel: "Type",
+    typeCheck: "Check off",
+    typeMeasure: "Measure",
+    measureTargetLabel: "Daily goal",
+    unitLabel: "Unit",
+    unitPlaceholder: "glasses, minutes, pages…",
+    stepLabel: "Per tap",
+    logValueLabel: "Logged",
+    timeOfDayLabel: "Time of day",
+    todAnytime: "Anytime",
+    todMorning: "Morning",
+    todAfternoon: "Afternoon",
+    todEvening: "Evening",
+    datesLabel: "Active dates",
+    startDateLabel: "Starts",
+    endDateLabel: "Ends",
+    datesHint: "Leave blank to run indefinitely",
+    challengeProgress: "Day {n} of {total}",
+    reminderLabel: "Reminder",
+    reminderOnlyIfNotDone: "Only if not done yet",
+    arrangeButton: "Arrange",
+    arrangeDone: "Done",
+    cancelButton: "Cancel",
   },
 };

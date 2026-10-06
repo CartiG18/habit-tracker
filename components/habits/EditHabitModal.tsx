@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useHabitsContext } from "@/hooks/useHabits";
+import { useAuth } from "@/lib/auth-context";
+import { enablePush } from "@/lib/push";
+import toast from "react-hot-toast";
+import HabitFormExtras, { extrasFromHabit, extrasToHabit, extrasValid, HabitExtras } from "./HabitFormExtras";
 import { HABIT_COLORS, DAYS, EMOJI_OPTIONS, cn, makeId } from "@/lib/utils";
 import { HabitColor, DayOfWeek, HabitSchedule, Habit, Subtask } from "@/types";
 import { useTheme, useIcons } from "@/lib/theme-context";
@@ -19,7 +23,12 @@ type ScheduleType = "weekly" | "monthly_dates" | "frequency_week" | "frequency_m
 
 export default function EditHabitModal({ open, onClose, habit }: Props) {
   const { editHabit } = useHabitsContext();
-  const { isRetro } = useTheme();
+  const { user } = useAuth();
+  const [extras, setExtras] = useState<HabitExtras>(() => extrasFromHabit(habit));
+  const patchExtras = (patch: Partial<HabitExtras>) => setExtras((x) => ({ ...x, ...patch }));
+  const { isRetro, def } = useTheme();
+  // Themes can turn off per-habit emoji + color (e.g. Foundation). Data is untouched.
+  const showDecor = def.habitDecor !== false;
   const copy = useCopy();
   const Icons = useIcons();
 
@@ -75,7 +84,16 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
     if (!name.trim()) return false;
     if (scheduleType === "weekly" && selectedDays.length === 0) return false;
     if (scheduleType === "monthly_dates" && selectedDates.length === 0) return false;
+    if (!extrasValid(extras)) return false;
     return true;
+  }
+
+  /** After saving a habit with a reminder, register this device for pushes. */
+  async function ensurePush() {
+    if (!user) return;
+    const result = await enablePush(user.uid).catch(() => "unsupported" as const);
+    if (result === "denied") toast.error(copy.toastPermDenied);
+    else if (result === "unsupported") toast.error(copy.toastNotifUnsupported);
   }
 
   async function handleSave() {
@@ -88,10 +106,14 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
       emoji, 
       color, 
       schedule: buildSchedule(),
-      subtasks: finalSubtasks
+      subtasks: finalSubtasks,
+      ...extrasToHabit(extras, habit),
     });
     setSaving(false);
-    if (ok) onClose();
+    if (ok) {
+      if (extras.reminderOn) ensurePush();
+      onClose();
+    }
   }
 
   if (!open) return null;
@@ -147,8 +169,9 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
 
             <div className="space-y-6">
               {/* Emoji */}
+              {showDecor && (
               <div>
-                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "th-label text-sm font-500 text-th-text-secondary")}>
                   {copy.labelIcon}
                 </label>
                 <div className="mt-2">
@@ -174,10 +197,11 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Name */}
               <div>
-                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "th-label text-sm font-500 text-th-text-secondary")}>
                   {copy.labelName}
                 </label>
                 <div className={cn("flex items-center mt-2", 
@@ -194,8 +218,9 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
               </div>
 
               {/* Color */}
+              {showDecor && (
               <div>
-                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "th-label text-sm font-500 text-th-text-secondary")}>
                   {copy.labelColor}
                 </label>
                 <div className="flex gap-2.5 mt-3">
@@ -216,10 +241,11 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Schedule */}
               <div className={cn("pt-4", isRetro ? "border-t border-th-primary/20" : "")}>
-                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                <label className={cn("font-theme transition-colors block", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "th-label text-sm font-500 text-th-text-secondary")}>
                   {copy.labelSchedule}
                 </label>
                 <div className={cn("grid grid-cols-4 gap-1 mt-3", 
@@ -284,10 +310,13 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                 )}
               </div>
 
+              {/* Type, time of day, active dates, reminder */}
+              <HabitFormExtras value={extras} onChange={patchExtras} />
+
               {/* Subtasks */}
               <div className={cn("pt-4", isRetro ? "border-t border-th-primary/20" : "")}>
                 <div className="flex justify-between items-center mb-2">
-                  <label className={cn("font-theme transition-colors", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "text-sm font-500 text-th-text-secondary")}>
+                  <label className={cn("font-theme transition-colors", isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-widest" : "th-label text-sm font-500 text-th-text-secondary")}>
                     {copy.subtasksLabel}
                   </label>
                   <button onClick={() => setSubtasks(s => [...s, { id: makeId(), title: '' }])}
@@ -315,7 +344,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
                         />
                         <button onClick={() => setSubtasks(s => s.filter(x => x.id !== st.id))}
                           className={cn("p-1.5 transition-colors", 
-                            isRetro ? "text-red-500/60 hover:text-red-500 hover:bg-red-500/10" : "text-th-text-secondary hover:text-red-500 hover:bg-red-50 rounded-full"
+                            isRetro ? "text-th-danger/60 hover:text-th-danger hover:bg-th-danger/10" : "text-th-text-secondary hover:text-th-danger hover:bg-red-50 rounded-full"
                           )}>
                           <Icons.close className="w-4 h-4" />
                         </button>
@@ -330,7 +359,7 @@ export default function EditHabitModal({ open, onClose, habit }: Props) {
               className={cn("w-full mt-8 py-4 transition-all duration-300 font-theme disabled:opacity-40",
                 isRetro 
                   ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgb(var(--th-primary)/0.4)]"
-                  : "bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
+                  : "th-btn-primary bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
               )}>
               {saving ? copy.savingText : copy.updateButton}
             </button>

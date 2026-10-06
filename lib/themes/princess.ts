@@ -1,18 +1,20 @@
 import { extendTheme } from "@/lib/themes/extend";
-import { soft } from "@/lib/themes/soft";
+import { softBase } from "@/lib/themes/soft-base";
 import PrincessOverlay from "@/components/themes/princess/PrincessOverlay";
 import { TwinkleStarIcon } from "@/components/themes/princess/TwinkleStarIcon";
 import { imageIcon } from "@/components/themes/imageIcon";
 import {
   MirrorIcon, BellBowIcon, KeyIcon, CoachIcon, FrameIcon, SwirlIcon, ScrollIcon,
   ShootingStarIcon, WandIcon, CrownIcon, QuillIcon, BrokenHeartIcon, CloseIcon, ChevronIcon,
+  RestCloudIcon, ChestIcon, HourglassIcon, PlaySparkIcon, StorybookIcon, PearlGripIcon,
+  SunriseIcon, SunIcon, MoonStarIcon, CalendarIcon, PlusGoldIcon, MinusGoldIcon,
 } from "@/components/themes/princess/icons";
 
 // ─── Princess ─────────────────────────────────────────────────────────────────
 // Storybook whimsy: floral teal wallpaper, blush-pink cards, handwritten text,
 // gold nav icons and fairy dust whenever a habit is completed.
 
-export const princess = extendTheme(soft, {
+export const princess = extendTheme(softBase, {
   name: "Princess",
   description: "Enchanted & dreamy",
   icon: CrownIcon,
@@ -54,7 +56,7 @@ export const princess = extendTheme(soft, {
     neuIn:  "inset 2px 2px 6px rgba(95,170,165,0.2), inset -2px -2px 6px rgba(255,255,255,0.9)",
   },
 
-  // Slightly crisper than Soft Focus — soft, but not pillowy
+  // Slightly crisper than the soft base — soft, but not pillowy
   radius: { lg: "6px", xl: "8px", "2xl": "10px", "3xl": "14px" },
   navIcons: {
     main: imageIcon("/icons/princess-castle.svg"),
@@ -78,6 +80,18 @@ export const princess = extendTheme(soft, {
     logout: CoachIcon,
     upload: FrameIcon,
     reset: SwirlIcon,
+    skip: RestCloudIcon,
+    archive: ChestIcon,
+    pause: HourglassIcon,
+    resume: PlaySparkIcon,
+    history: StorybookIcon,
+    grip: PearlGripIcon,
+    morning: SunriseIcon,
+    afternoon: SunIcon,
+    evening: MoonStarIcon,
+    calendar: CalendarIcon,
+    increment: PlusGoldIcon,
+    decrement: MinusGoldIcon,
   },
   marker: "star",
   // Selected day / nav tab: no background, a gold frame; others grow slightly on hover/press
@@ -183,5 +197,24 @@ export const princess = extendTheme(soft, {
     toastAlertsOn: "Reminders on — a little bird will remind you",
     toastAlertsOff: "Reminders off",
     toastSaveFailed: "Oh no — that didn't save. Try again?",
+    skipButton: "Take a rest day",
+    unskipButton: "Undo rest day",
+    skippedLabel: "Resting",
+    archiveButton: "Tuck away in the chest",
+    archivedSection: "The Treasure Chest",
+    archivedEmpty: "The chest is empty",
+    restoreButton: "Bring it back",
+    pauseButton: "Pause the spell",
+    resumeButton: "Wake the spell",
+    pausedSection: "Sleeping Spells",
+    historyLabel: "Storybook",
+    historyHint: "Tap a day to fill in your story",
+    arrangeButton: "Rearrange",
+    cancelButton: "Never mind",
+    toastArchived: "Tucked away in the treasure chest",
+    toastRestored: "Back from the chest ✨",
+    toastPaused: "Sleeping until you need it",
+    toastResumed: "Awake again ✨",
+    toastDeleted: "Gone with the wind",
   },
 });

@@ -9,6 +9,8 @@ interface Props {
   onClick: (e: React.MouseEvent) => void;
   /** Slightly larger variant (used when the marker shows a subtask count) */
   large?: boolean;
+  /** Rest day: muted, dashed outline (children show the theme's skip icon) */
+  skipped?: boolean;
   children?: ReactNode;
 }
 
@@ -44,7 +46,7 @@ const STAR_PATH = roundedStarPath();
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /** The tappable completion marker on a habit card. Shape comes from the theme (`marker`). */
-export default function CompletionMarker({ completed, onClick, large, children }: Props) {
+export default function CompletionMarker({ completed, onClick, large, skipped, children }: Props) {
   const { def } = useTheme();
   const gradId = `mk${useId().replace(/:/g, "")}`;
 
@@ -61,6 +63,8 @@ export default function CompletionMarker({ completed, onClick, large, children }
           large ? "w-12 h-12" : "w-11 h-11",
           completed ? "scale-105 text-th-btn-text" : "text-th-text-secondary hover:scale-105"
         )}
+        aria-pressed={completed}
+        data-skipped={skipped || undefined}
       >
         <svg
           viewBox="0 0 40 40"
@@ -83,8 +87,9 @@ export default function CompletionMarker({ completed, onClick, large, children }
             strokeLinejoin="round"
             className="transition-[fill,stroke] duration-300"
             style={{
-              fill: completed ? doneFill : "rgb(var(--th-surface-light))",
+              fill: completed ? doneFill : skipped ? "rgb(var(--th-surface-light) / 0.45)" : "rgb(var(--th-surface-light))",
               stroke: completed ? doneStroke : "rgb(var(--th-surface-dark))",
+              strokeDasharray: skipped ? "3 2.5" : undefined,
             }}
           />
           {/* Shine: a soft highlight on the upper-left of a completed metallic star */}
@@ -102,11 +107,15 @@ export default function CompletionMarker({ completed, onClick, large, children }
   return (
     <button
       onClick={onClick}
+      aria-pressed={completed}
+      data-skipped={skipped || undefined}
       className={cn(
-        "relative z-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+        "th-marker relative z-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
         large ? "w-10 h-10" : "w-8 h-8",
         completed
           ? "bg-th-success text-th-btn-text shadow-th-raised"
+          : skipped
+          ? "bg-transparent border border-dashed border-th-surface-dark text-th-text-secondary"
           : "bg-th-surface-light border border-th-surface-dark/30 shadow-neu-in text-th-text-secondary"
       )}
     >

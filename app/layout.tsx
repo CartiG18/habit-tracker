@@ -11,7 +11,7 @@ import {
   DEFAULT_THEME_ID,
   THEMES,
   THEME_STORAGE_KEY,
-  isThemeId,
+  resolveThemeId,
   buildThemeInitScript,
   buildThemeStylesheet,
 } from "@/lib/themes";
@@ -19,7 +19,7 @@ import {
 /** Theme id from the cookie written by ThemeProvider (falls back to the default). */
 function themeFromCookie() {
   const stored = cookies().get(THEME_STORAGE_KEY)?.value;
-  return isThemeId(stored) ? stored : DEFAULT_THEME_ID;
+  return resolveThemeId(stored) ?? DEFAULT_THEME_ID;
 }
 
 export const metadata: Metadata = {

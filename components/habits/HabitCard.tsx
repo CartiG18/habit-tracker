@@ -7,6 +7,7 @@ import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
 import HabitDetailModal from "./HabitDetailModal";
 import CompletionMarker from "./CompletionMarker";
+import { useHabitsContext } from "@/hooks/useHabits";
 
 interface Props {
   habit: HabitWithStats;
@@ -16,15 +17,26 @@ interface Props {
 
 export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
-  const { isRetro } = useTheme();
+  const { isRetro, def } = useTheme();
+  // Themes can turn off per-habit emoji + color (e.g. Foundation). Data is untouched.
+  const showDecor = def.habitDecor !== false;
   const copy = useCopy();
   const Icons = useIcons();
   const color = HABIT_COLORS[habit.color];
+  const { skip, logValue } = useHabitsContext();
   const isFrequency = habit.schedule.type === "frequency_week" || habit.schedule.type === "frequency_month";
+  const skipped = !!habit.todaySkipped && !habit.todayCompleted;
+  const measure = habit.measure;
+  const value = habit.todayValue ?? 0;
+  const streakUnit = habit.schedule.type === "frequency_week" ? copy.streakUnitWeek
+    : habit.schedule.type === "frequency_month" ? copy.streakUnitMonth : copy.streakUnitDay;
 
+  // Tap: undo a rest day, add one step to a measurable habit, or toggle completion
   function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
-    onToggle();
+    if (skipped) skip(habit, false, selectedDate);
+    else if (measure) logValue(habit, value + (measure.step || 1), selectedDate, value);
+    else onToggle();
   }
 
   return (
@@ -32,7 +44,7 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
       <div
         onClick={() => setDetailOpen(true)}
         className={cn(
-          "flex items-center gap-4 cursor-pointer transition-all duration-300 relative",
+          "th-card th-habit flex items-center gap-4 cursor-pointer transition-all duration-300 relative",
           isRetro
             ? "p-4 bg-th-screen-light border border-th-primary/20 hover:border-th-primary/50 overflow-hidden"
             : "p-4 sm:p-5 bg-th-surface border border-th-surface-dark/10 shadow-neu-out sm:rounded-2xl rounded-xl hover:shadow-neu-in"
@@ -44,7 +56,37 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
         )}
 
         {/* Toggle Button / Status Indicator */}
-        {habit.subtasks && habit.subtasks.length > 0 ? (
+        {skipped ? (
+          isRetro ? (
+            <button
+              onClick={handleToggle}
+              aria-label={copy.unskipButton}
+              className="w-12 h-16 rounded-sm border-2 border-dashed border-th-primary/30 flex-shrink-0 flex items-center justify-center relative z-10 text-th-primary/50"
+            >
+              <span className="font-theme font-800 text-[9px] uppercase">{copy.skippedLabel}</span>
+            </button>
+          ) : (
+            <CompletionMarker skipped completed={false} onClick={handleToggle}>
+              <Icons.skip className="w-5 h-5" />
+            </CompletionMarker>
+          )
+        ) : measure ? (
+          isRetro ? (
+            <button
+              onClick={handleToggle}
+              className={cn(
+                "flex-shrink-0 transition-all duration-300 flex items-center justify-center relative z-10 w-12 h-16 rounded-sm border-2",
+                habit.todayCompleted ? "bg-th-success/20 text-th-success border-th-success shadow-[inset_0_0_8px_rgb(var(--th-success)/0.4),0_0_5px_rgb(var(--th-success)/0.6)]" : "bg-th-screen-light border-th-primary/30 text-th-primary/60"
+              )}
+            >
+              <span className="font-theme font-800 text-[10px] uppercase">{Math.min(100, Math.round((value / measure.target) * 100))}%</span>
+            </button>
+          ) : (
+            <CompletionMarker large completed={habit.todayCompleted} onClick={handleToggle}>
+              {habit.todayCompleted ? <Icons.check className="w-5 h-5" strokeWidth={3} /> : `${value}/${measure.target}`}
+            </CompletionMarker>
+          )
+        ) : habit.subtasks && habit.subtasks.length > 0 ? (
           isRetro ? (
             <button
               onClick={handleToggle}
@@ -92,18 +134,20 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
         )}
 
         {/* Content */}
-        <div className="flex-1 min-w-0 z-10 pl-2">
+        <div className="th-habit-body flex-1 min-w-0 z-10 pl-2">
           <div className="flex items-center gap-3">
-            <span className={cn(
-              "text-lg opacity-80",
-              habit.todayCompleted && isRetro && "grayscale opacity-40",
-              habit.todayCompleted && !isRetro && "opacity-50"
-            )}>{habit.emoji}</span>
+            {showDecor && (
+              <span className={cn(
+                "text-lg opacity-80",
+                habit.todayCompleted && isRetro && "grayscale opacity-40",
+                habit.todayCompleted && !isRetro && "opacity-50"
+              )}>{habit.emoji}</span>
+            )}
             <p className={cn(
               "truncate transition-colors",
               isRetro 
-                ? ["font-theme font-700 text-sm uppercase tracking-widest", habit.todayCompleted ? "text-th-success text-signal" : "text-th-primary text-glow"]
-                : ["font-theme font-500 text-base", habit.todayCompleted ? "text-th-text-secondary line-through" : "text-th-text"]
+                ? ["font-theme font-700 text-sm uppercase tracking-widest", habit.todayCompleted ? "text-th-success text-signal" : skipped ? "text-th-primary/40" : "text-th-primary text-glow"]
+                : ["font-theme font-500 text-base", habit.todayCompleted ? "text-th-text-secondary line-through" : skipped ? "text-th-text-secondary" : "text-th-text"]
             )}>
               {habit.name}
             </p>
@@ -111,7 +155,16 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
 
           {/* Progress context */}
           <div className="mt-2 flex items-center gap-3">
-            {isFrequency && habit.periodCompletions !== undefined && habit.periodTarget !== undefined ? (
+            {measure ? (
+              <span className={cn(
+                "th-measure transition-colors tabular-nums",
+                isRetro
+                  ? "text-[10px] font-theme font-700 uppercase tracking-widest text-th-primary/60"
+                  : "text-xs font-theme text-th-text-secondary"
+              )}>
+                {value} / {measure.target} {measure.unit}
+              </span>
+            ) : isFrequency && habit.periodCompletions !== undefined && habit.periodTarget !== undefined ? (
               <span className={cn(
                 "transition-colors",
                 isRetro 
@@ -125,24 +178,47 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
                 {habit.weekLogs.map((log, i) => (
                   <div
                     key={log.date}
+                    data-done={log.completed}
                     className={cn(
+                      "th-dot",
                       isRetro ? "w-1.5 h-3" : "w-2 h-2 rounded-full",
                       "transition-all"
                     )}
-                    style={{
-                      background: !log.scheduled
-                        ? "transparent"
-                        : log.completed
-                        ? "rgb(var(--th-success))"
-                        : isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-surface-dark))",
-                      opacity: !log.scheduled ? 0 : log.completed ? 1 : (isRetro ? 0.3 : 0.5),
-                      boxShadow: (isRetro && log.completed) ? "0 0 5px rgb(var(--th-success) / 0.6)" : "none",
-                    }}
+                    data-skipped={!!log.skipped && !log.completed}
+                    style={
+                      log.skipped && !log.completed
+                        ? {
+                            // Rest day: hollow ring — not a miss, not a completion
+                            background: "transparent",
+                            opacity: 1,
+                            boxShadow: `inset 0 0 0 1px ${isRetro ? "rgb(var(--th-primary) / 0.5)" : "rgb(var(--th-surface-dark))"}`,
+                          }
+                        : {
+                            background: !log.scheduled
+                              ? "transparent"
+                              : log.completed
+                              ? "rgb(var(--th-success))"
+                              : isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-surface-dark))",
+                            opacity: !log.scheduled ? 0 : log.completed ? 1 : (isRetro ? 0.3 : 0.5),
+                            boxShadow: (isRetro && log.completed) ? "0 0 5px rgb(var(--th-success) / 0.6)" : "none",
+                          }
+                    }
                   />
                 ))}
               </div>
             )}
             
+            {skipped && (
+              <span className={cn(
+                "th-tag transition-colors",
+                isRetro
+                  ? "text-[10px] font-theme font-700 uppercase tracking-widest text-th-primary/50"
+                  : "text-xs font-theme text-th-text-secondary"
+              )}>
+                {copy.skippedLabel}
+              </span>
+            )}
+
             {habit.currentStreak > 0 && (
               <div className="flex items-center gap-1 ml-auto">
                 <span className={cn(
@@ -152,7 +228,9 @@ export default function HabitCard({ habit, onToggle, selectedDate }: Props) {
                     : "font-theme font-500 text-xs text-th-text-secondary bg-th-surface-dark/20 px-2 py-0.5 rounded-full"
                 )}>
                   {copy.seqPrefix}
-                  {isRetro ? habit.currentStreak.toString().padStart(2, '0') : ` ${habit.currentStreak} day`}
+                  {isRetro
+                    ? `${habit.currentStreak.toString().padStart(2, "0")}${streakUnit}`
+                    : ` ${habit.currentStreak} ${streakUnit}`}
                 </span>
               </div>
             )}

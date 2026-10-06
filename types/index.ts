@@ -56,6 +56,27 @@ export interface Subtask {
   title: string;
 }
 
+/** Morning / afternoon / evening section on the dashboard (undefined = anytime) */
+export type TimeOfDay = "morning" | "afternoon" | "evening";
+
+/** A measurable habit: log a quantity toward a daily target (e.g. 8 glasses). */
+export interface HabitMeasure {
+  target: number;
+  unit: string;
+  /** Amount added per tap on the habit row */
+  step: number;
+}
+
+/** Per-habit push reminder at a local time. */
+export interface HabitReminder {
+  enabled: boolean;
+  time: string; // "HH:mm" in the user's time zone
+  /** Only send if the habit isn't done (or skipped) yet that day */
+  onlyIfNotDone: boolean;
+  /** Server bookkeeping: local date of the last reminder sent */
+  lastSentDate?: string;
+}
+
 export interface Habit {
   id: string;
   userId: string;
@@ -68,6 +89,15 @@ export interface Habit {
   archivedAt?: string;
   order: number;
   subtasks?: Subtask[];
+  /** Active date range (inclusive) — for challenges or seasonal habits */
+  startDate?: string; // "YYYY-MM-DD"
+  endDate?: string;   // "YYYY-MM-DD"
+  /** Paused from this date … until (exclusive) the resume date; no `pausedUntil` = until resumed */
+  pausedFrom?: string;
+  pausedUntil?: string;
+  timeOfDay?: TimeOfDay;
+  measure?: HabitMeasure;
+  reminder?: HabitReminder;
 }
 
 export interface HabitLog {
@@ -76,6 +106,10 @@ export interface HabitLog {
   userId: string;
   date: string; // "YYYY-MM-DD"
   completed: boolean;
+  /** Intentionally skipped (rest day): neither breaks a streak nor counts as a miss */
+  skipped?: boolean;
+  /** Logged amount for measurable habits */
+  value?: number;
   note?: string;
   completedAt?: string;
   completedSubtasks?: string[]; // Array of subtask IDs
@@ -84,6 +118,7 @@ export interface HabitLog {
 export interface DayLog {
   date: string;
   completed: boolean;
+  skipped?: boolean;
   scheduled: boolean;
   completedSubtasks?: string[];
 }
@@ -102,6 +137,8 @@ export interface HabitWithStats extends Habit {
   longestStreak: number;
   completionRate: number; // 0–1
   todayCompleted: boolean;
+  todaySkipped?: boolean;
+  todayValue?: number;
   todayCompletedSubtasks?: string[];
   weekLogs: DayLog[];
   periodCompletions?: number;
@@ -116,5 +153,11 @@ export interface User {
   createdAt: string;
   notificationsEnabled?: boolean;
   reminderTime?: string;
-  theme?: string; // a ThemeId; validated with isThemeId() since stored ids may be stale
+  theme?: string; // a ThemeId; validated with resolveThemeId() since stored ids may be stale
+  /** IANA zone (e.g. "America/New_York") so the server can send reminders at local times */
+  timeZone?: string;
+  /** Push tokens for this user's devices */
+  fcmTokens?: string[];
+  /** Server bookkeeping: local date of the last daily reminder sent */
+  lastDailyReminderDate?: string;
 }

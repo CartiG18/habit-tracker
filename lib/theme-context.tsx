@@ -16,6 +16,7 @@ import {
   THEME_STORAGE_KEY,
   getTheme,
   isThemeId,
+  resolveThemeId,
   writeThemeCookie,
   ThemeId,
 } from "@/lib/themes";
@@ -70,13 +71,14 @@ export function ThemeProvider({ children, initialTheme }: ProviderProps) {
   // Pre-cookie devices: adopt the localStorage theme after hydration (one-time migration)
   useEffect(() => {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (isThemeId(stored) && stored !== initialTheme) setThemeState(stored);
+    const migrated = resolveThemeId(stored);
+    if (migrated && migrated !== initialTheme) setThemeState(migrated);
   }, [initialTheme]);
 
   // Sync from Firebase profile on first load (profile wins over localStorage)
   useEffect(() => {
-    const remote = userProfile?.theme;
-    if (isThemeId(remote)) setThemeState(remote);
+    const remote = resolveThemeId(userProfile?.theme);
+    if (remote) setThemeState(remote);
   }, [userProfile]);
 
   const def = getTheme(theme);

@@ -33,6 +33,8 @@ export interface ThemeColors {
   text: string;
   /** Text drawn on top of `primary` / `success` fills (`th-btn-text`) */
   btnText: string;
+  /** Destructive actions — delete, sign out (`th-danger`) */
+  danger: string;
 }
 
 /** Alpha values (0–1) used to derive the translucent tokens from the base colors. */
@@ -105,7 +107,9 @@ export type IconName =
   | "close" | "check" | "chevron" | "add" | "plan"
   | "streak" | "rate" | "best" | "edit" | "delete"
   | "appearance" | "notifications" | "account" | "logout"
-  | "upload" | "reset";
+  | "upload" | "reset"
+  | "skip" | "archive" | "pause" | "resume" | "history" | "grip"
+  | "morning" | "afternoon" | "evening" | "calendar" | "increment" | "decrement";
 
 export type ThemeIcons = Record<IconName, ThemeIcon>;
 
@@ -160,6 +164,11 @@ export interface ThemeDefinition {
   /** Completed star fill (defaults to the flat `success` color) */
   markerFill?: ThemeMarkerFill;
   selection?: ThemeSelection;
+  /**
+   * Whether habits show — and the add/edit forms offer — a per-habit emoji and
+   * color (default true). Off hides them in the UI only; saved data is untouched.
+   */
+  habitDecor?: boolean;
   /** Gradient + glow of the selection frame when `selection` is "frame" */
   frameFill?: ThemeMarkerFill;
   /** Every UI string, keyed by `CopyKey` */

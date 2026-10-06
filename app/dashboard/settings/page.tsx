@@ -12,6 +12,8 @@ import { useCopy } from "@/lib/copy";
 import { THEMES, THEME_IDS } from "@/lib/themes";
 import WallpaperSettings from "@/components/settings/WallpaperSettings";
 import ColorSettings from "@/components/settings/ColorSettings";
+import ArchivedHabits from "@/components/settings/ArchivedHabits";
+import { enablePush } from "@/lib/push";
 
 export default function SettingsPage() {
   const { user, userProfile, signOut } = useAuth();
@@ -36,19 +38,14 @@ export default function SettingsPage() {
     if (!user) return;
 
     if (!notifEnabled) {
-      // Safari only exposes Notification to installed (home-screen) web apps
-      if (typeof window === "undefined" || !("Notification" in window)) {
+      // Registers this device for pushes (Safari: only inside the installed home-screen app)
+      const result = await enablePush(user.uid).catch(() => "unsupported" as const);
+      if (result === "unsupported") {
         toast.error(copy.toastNotifUnsupported);
         return;
       }
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          toast.error(copy.toastPermDenied);
-          return;
-        }
-      } catch {
-        toast.error(copy.toastNotifUnsupported);
+      if (result === "denied") {
+        toast.error(copy.toastPermDenied);
         return;
       }
     }
@@ -136,7 +133,7 @@ export default function SettingsPage() {
         
         <div className={cn("px-5 py-3 relative z-10", isRetro ? "border-b border-th-primary/20 bg-th-primary/5" : "")}>
           <p className={cn("font-theme flex items-center gap-2", 
-            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
+            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "th-label text-th-text-secondary text-sm font-500"
           )}>
             <Icons.appearance className="w-4 h-4" /> {copy.appearanceLabel}
           </p>
@@ -189,7 +186,7 @@ export default function SettingsPage() {
         
         <div className={cn("px-5 py-3 relative z-10", isRetro ? "border-b border-th-primary/20 bg-th-primary/5" : "")}>
           <p className={cn("font-theme flex items-center gap-2",
-            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
+            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "th-label text-th-text-secondary text-sm font-500"
           )}>
             <Icons.notifications className="w-4 h-4" /> {copy.notificationsLabel}
           </p>
@@ -237,7 +234,7 @@ export default function SettingsPage() {
               isRetro ? "border-t border-th-primary/20" : ""
             )}>
               <span className={cn("font-theme transition-colors",
-                isRetro ? "text-th-primary/60 text-[10px] uppercase tracking-widest" : "text-th-text-secondary text-sm font-500"
+                isRetro ? "text-th-primary/60 text-[10px] uppercase tracking-widest" : "th-label text-th-text-secondary text-sm font-500"
               )}>
                 {copy.timeLabel}
               </span>
@@ -259,6 +256,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Archived habits */}
+      <ArchivedHabits />
+
       {/* Account */}
       <div className={cn("mb-8 relative overflow-hidden transition-colors",
         isRetro ? "bg-th-screen-light/30 border border-th-primary/30" : "bg-th-surface rounded-2xl shadow-neu-out"
@@ -269,7 +269,7 @@ export default function SettingsPage() {
         
         <div className={cn("px-5 py-3 relative z-10", isRetro ? "border-b border-th-primary/20 bg-th-primary/5" : "")}>
           <p className={cn("font-theme flex items-center gap-2",
-            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "text-th-text-secondary text-sm font-500"
+            isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em]" : "th-label text-th-text-secondary text-sm font-500"
           )}>
             <Icons.account className="w-4 h-4" /> {copy.accountLabel}
           </p>
@@ -279,8 +279,8 @@ export default function SettingsPage() {
           onClick={handleSignOut}
           className={cn("w-full flex items-center justify-center gap-3 px-5 py-4 transition-colors group relative z-10 font-theme",
             isRetro 
-              ? "hover:bg-red-500/10 text-red-500 border-2 border-transparent hover:border-red-500/30 font-800 text-sm uppercase tracking-widest"
-              : "text-red-500 hover:bg-red-50 font-500 text-base"
+              ? "hover:bg-th-danger/10 text-th-danger border-2 border-transparent hover:border-th-danger/30 font-800 text-sm uppercase tracking-widest"
+              : "text-th-danger hover:bg-red-50 font-500 text-base"
           )}
         >
           <Icons.logout className="w-4 h-4" />

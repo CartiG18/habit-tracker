@@ -19,7 +19,7 @@ export default function DailyProgress({ completed, total, allDone }: Props) {
 
   return (
     <div className={cn(
-      "p-4 flex items-center relative overflow-hidden transition-colors",
+      "th-card th-progress p-4 flex items-center relative overflow-hidden transition-colors",
       isRetro 
         ? "bg-th-screen-light border border-th-primary/30 gap-6"
         : "bg-th-screen border border-th-surface-dark/10 shadow-neu-out sm:rounded-2xl rounded-xl flex-col sm:flex-row gap-4"
@@ -50,7 +50,7 @@ export default function DailyProgress({ completed, total, allDone }: Props) {
         </div>
       ) : (
         /* Soft Progress Bar */
-        <div className="w-full sm:w-48 h-3 bg-th-surface-dark/30 rounded-full overflow-hidden shadow-neu-in flex-shrink-0">
+        <div className="th-track w-full sm:w-48 h-3 bg-th-surface-dark/30 rounded-full overflow-hidden shadow-neu-in flex-shrink-0">
           <div 
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{ 
@@ -88,7 +88,7 @@ export default function DailyProgress({ completed, total, allDone }: Props) {
         ) : (
           <>
             <p className={cn(
-              "transition-colors",
+              "th-hero transition-colors",
               isRetro 
                 ? "font-theme font-700 text-th-primary text-lg uppercase text-glow"
                 : "font-theme font-700 text-th-text text-lg"
@@ -102,7 +102,8 @@ export default function DailyProgress({ completed, total, allDone }: Props) {
                 ? "text-th-primary/60 text-[10px] font-theme uppercase tracking-widest mt-1"
                 : "text-th-text-secondary text-sm font-theme mt-0.5"
             )}>
-              {Number((total - completed).toFixed(1))} {copy.pendingSuffix}
+              {/* Themes may write "{total}" in pendingSuffix, e.g. "of {total} left" */}
+              {Number((total - completed).toFixed(1))} {copy.pendingSuffix.replace("{total}", String(total))}
             </p>
           </>
         )}

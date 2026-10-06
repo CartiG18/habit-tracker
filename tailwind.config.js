@@ -37,6 +37,7 @@ module.exports = {
         "th-text":          "rgb(var(--th-text) / <alpha-value>)",
         "th-text-secondary":"var(--th-text-secondary)",
         "th-btn-text":      "rgb(var(--th-btn-text) / <alpha-value>)",
+        "th-danger":        "rgb(var(--th-danger) / <alpha-value>)",
       },
       // Theme-aware radii (resolved via CSS vars; defaults = Tailwind's)
       borderRadius: {

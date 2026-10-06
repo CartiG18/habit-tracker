@@ -87,7 +87,7 @@ export default function AuthPage() {
         <button
           onClick={signInWithGoogle}
           disabled={!init}
-          className="w-full py-4 rounded-xl font-theme font-500 text-base transition-all duration-300 bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:opacity-50 disabled:bg-th-surface-dark shadow-th-raised"
+          className="th-btn-primary w-full py-4 rounded-xl font-theme font-500 text-base transition-all duration-300 bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:opacity-50 disabled:bg-th-surface-dark shadow-th-raised"
         >
           {init ? copy.authButton : copy.authLocked}
         </button>

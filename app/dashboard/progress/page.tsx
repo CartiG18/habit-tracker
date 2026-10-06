@@ -9,7 +9,8 @@ import {
 import { useHabits } from "@/hooks/useHabits";
 import { useAuth } from "@/lib/auth-context";
 import { HABIT_COLORS, cn } from "@/lib/utils";
-import { getHabitLogs, isScheduledDay } from "@/lib/habits";
+import { getHabitLogs } from "@/lib/habits";
+import { isHabitDue } from "@/lib/schedule";
 import { HabitWithStats, HabitLog } from "@/types";
 import { useTheme, useIcons } from "@/lib/theme-context";
 import { useCopy } from "@/lib/copy";
@@ -25,7 +26,7 @@ function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: Habi
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
-  const logMap = new Map(logs.map((l) => [l.date, l.completed]));
+  const logMap = new Map(logs.map((l) => [l.date, l]));
   const todayStr = format(today, "yyyy-MM-dd");
 
   return (
@@ -44,8 +45,9 @@ function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: Habi
           const dateStr = format(day, "yyyy-MM-dd");
           const inMonth = isSameMonth(day, today);
           const isToday = dateStr === todayStr;
-          const scheduled = inMonth && isScheduledDay(habit.schedule, day);
-          const completed = logMap.get(dateStr) ?? false;
+          const scheduled = inMonth && isHabitDue(habit, day);
+          const completed = logMap.get(dateStr)?.completed ?? false;
+          const skipped = !completed && !!logMap.get(dateStr)?.skipped;
           const isFuture = dateStr > todayStr;
 
           return (
@@ -64,6 +66,9 @@ function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: Habi
                   ? { background: isRetro ? "rgb(var(--th-screen))" : "transparent", color: isRetro ? "rgb(var(--th-primary)/0.2)" : "rgb(var(--th-text)/0.3)", border: isRetro ? "1px solid rgb(var(--th-primary)/0.1)" : "none" }
                   : completed
                   ? { background: "rgb(var(--th-success))", color: "rgb(var(--th-btn-text))", border: isRetro ? "1px solid rgb(var(--th-success))" : "none", boxShadow: isRetro ? "0 0 5px rgb(var(--th-success)/0.6)" : "none" }
+                  : skipped
+                  // Rest day: hollow dashed ring — neither a miss nor a completion
+                  ? { background: "transparent", color: isRetro ? "rgb(var(--th-primary)/0.6)" : "rgb(var(--th-text)/0.6)", border: isRetro ? "1px dashed rgb(var(--th-primary)/0.5)" : "1.5px dashed rgb(var(--th-surface-dark))" }
                   : scheduled
                   ? { background: isRetro ? "rgb(var(--th-screen-light))" : "rgb(var(--th-surface-dark))", color: isRetro ? "rgb(var(--th-primary))" : "rgb(var(--th-text))", border: isRetro ? "1px dashed rgb(var(--th-primary)/0.3)" : "none", opacity: isRetro ? 1 : 0.3 }
                   : { background: "transparent", color: isRetro ? "rgb(var(--th-primary)/0.1)" : "rgb(var(--th-text)/0.2)", border: isRetro ? "1px solid transparent" : "none" }
@@ -81,7 +86,9 @@ function MonthGrid({ habit, logs, isRetro }: { habit: HabitWithStats; logs: Habi
 export default function ProgressPage() {
   const { habits } = useHabits();
   const { user } = useAuth();
-  const { isRetro } = useTheme();
+  const { isRetro, def } = useTheme();
+  // Themes can turn off per-habit emoji + color (e.g. Foundation). Data is untouched.
+  const showDecor = def.habitDecor !== false;
   const copy = useCopy();
   const Icons = useIcons();
   const [view, setView] = useState<"week" | "month">("week");
@@ -153,7 +160,7 @@ export default function ProgressPage() {
       {/* Streaks */}
       <div className="mb-8">
         <h2 className={cn("font-theme mb-4 flex items-center gap-2 pb-2 transition-colors",
-          isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "text-th-text-secondary text-sm font-500"
+          isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "th-label text-th-text-secondary text-sm font-500"
         )}>
           <Icons.streak className="w-3 h-3" /> {copy.streaksSection}
         </h2>
@@ -179,13 +186,18 @@ export default function ProgressPage() {
                   
                   <div className="flex items-center justify-between mb-3 relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className={cn("text-xl opacity-80", isRetro && "grayscale-[0.2]")}>{habit.emoji}</span>
+                      {showDecor && <span className={cn("text-xl opacity-80", isRetro && "grayscale-[0.2]")}>{habit.emoji}</span>}
                       <span className={cn("font-theme transition-colors",
                         isRetro ? "font-700 text-sm text-th-primary uppercase tracking-widest" : "font-500 text-base text-th-text"
                       )}>{habit.name}</span>
                     </div>
                     <span className={cn("font-theme font-800 text-th-success", isRetro ? "text-xs" : "text-sm")}>
-                      {isRetro ? habit.currentStreak.toString().padStart(2, '0') : `${habit.currentStreak} day`}
+                      {(() => {
+                        // Weekly / monthly habits count streaks in weeks / months
+                        const unit = habit.schedule.type === "frequency_week" ? copy.streakUnitWeek
+                          : habit.schedule.type === "frequency_month" ? copy.streakUnitMonth : copy.streakUnitDay;
+                        return isRetro ? `${habit.currentStreak.toString().padStart(2, "0")}${unit}` : `${habit.currentStreak} ${unit}`;
+                      })()}
                     </span>
                   </div>
                   
@@ -209,7 +221,7 @@ export default function ProgressPage() {
       {/* Per-habit completion */}
       <div>
         <h2 className={cn("font-theme mb-4 flex items-center gap-2 pb-2 transition-colors",
-          isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "text-th-text-secondary text-sm font-500"
+          isRetro ? "text-th-primary/60 text-[10px] font-700 uppercase tracking-[0.2em] border-b border-th-primary/20" : "th-label text-th-text-secondary text-sm font-500"
         )}>
           <Icons.rate className="w-3 h-3" /> {copy.overviewSection}
         </h2>
@@ -234,7 +246,7 @@ export default function ProgressPage() {
                   isRetro ? "border-b border-th-primary/10" : ""
                 )}>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl opacity-80">{habit.emoji}</span>
+                    {showDecor && <span className="text-xl opacity-80">{habit.emoji}</span>}
                     <span className={cn("font-theme transition-colors",
                       isRetro ? "font-800 text-th-primary text-sm uppercase tracking-widest" : "font-700 text-th-text text-base"
                     )}>{habit.name}</span>

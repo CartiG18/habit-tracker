@@ -17,7 +17,7 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { DEFAULT_THEME_ID, THEME_STORAGE_KEY, isThemeId } from "@/lib/themes";
+import { DEFAULT_THEME_ID, THEME_STORAGE_KEY, resolveThemeId } from "@/lib/themes";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { User } from "@/types";
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
       createdAt: new Date().toISOString(),
       notificationsEnabled: false,
-      theme: isThemeId(storedTheme) ? storedTheme : DEFAULT_THEME_ID,
+      theme: resolveThemeId(storedTheme) ?? DEFAULT_THEME_ID,
     };
 
     await setDoc(userRef, newProfile);

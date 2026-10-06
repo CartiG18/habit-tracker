@@ -9,6 +9,13 @@ import {
   createHabit,
   updateHabit,
   archiveHabit,
+  restoreHabit,
+  pauseHabit,
+  resumeHabit,
+  deleteHabit,
+  reorderHabits,
+  setHabitSkipped,
+  logHabitValue,
   updateHabitNote,
   toggleSubtaskLog,
 } from "@/lib/habits";
@@ -26,6 +33,8 @@ function statusFor(habit: Habit, log: HabitLog | undefined) {
   const valid = new Set(habit.subtasks?.map((s) => s.id) ?? []);
   return {
     todayCompleted: log?.completed ?? false,
+    todaySkipped: !!log?.skipped,
+    todayValue: log?.value ?? 0,
     todayCompletedSubtasks: (log?.completedSubtasks ?? []).filter((id) => valid.has(id)),
   };
 }
@@ -48,6 +57,7 @@ export function useHabits(selectedDate: string = getTodayString()) {
   const { user } = useAuth();
   const copy = useCopy();
   const [habits, setHabits] = useState<HabitWithStats[]>([]);
+  const [archived, setArchived] = useState<Habit[]>([]);
   const [dateLogs, setDateLogs] = useState<Map<string, HabitLog>>(new Map());
   const [loading, setLoading] = useState(true);
 
@@ -63,10 +73,9 @@ export function useHabits(selectedDate: string = getTodayString()) {
       q,
       async (snapshot) => {
         const run = ++latest;
-        const rawHabits = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() } as Habit))
-          .filter((h) => !h.archivedAt)
-          .sort((a, b) => a.order - b.order);
+        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Habit));
+        setArchived(all.filter((h) => h.archivedAt).sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? "")));
+        const rawHabits = all.filter((h) => !h.archivedAt).sort((a, b) => a.order - b.order);
         try {
           const enriched = await Promise.all(rawHabits.map((h) => getHabitWithStats(user.uid, h)));
           if (run !== latest) return; // a newer snapshot superseded this one
@@ -78,7 +87,7 @@ export function useHabits(selectedDate: string = getTodayString()) {
               // before that, keep what we showed (or getHabitWithStats' today status).
               if (logsRef.current) return { ...h, ...statusFor(h, logsRef.current.get(h.id)) };
               const existing = prevById.get(h.id);
-              if (existing) return { ...h, todayCompleted: existing.todayCompleted, todayCompletedSubtasks: existing.todayCompletedSubtasks };
+              if (existing) return { ...h, todayCompleted: existing.todayCompleted, todaySkipped: existing.todaySkipped, todayValue: existing.todayValue, todayCompletedSubtasks: existing.todayCompletedSubtasks };
               return selectedDate === getTodayString() ? h : { ...h, ...statusFor(h, undefined) };
             });
           });
@@ -164,6 +173,32 @@ export function useHabits(selectedDate: string = getTodayString()) {
     }
   }, [user, selectedDate, refreshStats, copy]);
 
+  /** Mark / unmark a rest day. */
+  const skip = useCallback(async (habit: Habit, skipped: boolean, date: string = selectedDate) => {
+    if (!user) return;
+    try {
+      await setHabitSkipped(user.uid, habit, date, skipped);
+      refreshStats(habit);
+    } catch (err: any) {
+      console.error("Skip error:", err);
+      toast.error(copy.toastSaveFailed);
+    }
+  }, [user, selectedDate, refreshStats, copy]);
+
+  /** Set a measurable habit's logged amount (celebrates when it reaches the target). */
+  const logValue = useCallback(async (habit: Habit, value: number, date: string = selectedDate, previous = 0) => {
+    if (!user) return;
+    try {
+      const log = await logHabitValue(user.uid, habit, date, value);
+      // Celebrate only when this change crosses the target
+      if (log.completed && habit.measure && previous < habit.measure.target) emitHabitComplete();
+      refreshStats(habit);
+    } catch (err: any) {
+      console.error("Log value error:", err);
+      toast.error(copy.toastSaveFailed);
+    }
+  }, [user, selectedDate, refreshStats, copy]);
+
   // The actions below resolve to `true` on success so callers know whether to close.
 
   const addNote = useCallback(async (habitId: string, note: string, date: string = selectedDate) => {
@@ -203,19 +238,46 @@ export function useHabits(selectedDate: string = getTodayString()) {
     }
   }, [copy]);
 
-  const removeHabit = useCallback(async (habitId: string) => {
+  /** Run a habit-level action with the standard toast + boolean result. */
+  const run = useCallback(async (action: () => Promise<void>, successMsg: string | null, label: string) => {
     try {
-      await archiveHabit(habitId);
-      toast.success(copy.toastArchived);
+      await action();
+      if (successMsg) toast.success(successMsg);
       return true;
     } catch (err: any) {
-      console.error("Archive habit error:", err);
+      console.error(`${label} error:`, err);
       toast.error(copy.toastSaveFailed);
       return false;
     }
   }, [copy]);
 
-  return { habits, dateLogs, loading, toggle, toggleSubtask, addNote, addHabit, editHabit, removeHabit };
+  /** Archive: hidden from the app, history kept, restorable from Settings. */
+  const removeHabit = useCallback((habitId: string) => run(() => archiveHabit(habitId), copy.toastArchived, "Archive habit"), [run, copy]);
+  const restore = useCallback((habitId: string) => run(() => restoreHabit(habitId), copy.toastRestored, "Restore habit"), [run, copy]);
+  const pause = useCallback((habitId: string, from: string, until?: string) => run(() => pauseHabit(habitId, from, until), copy.toastPaused, "Pause habit"), [run, copy]);
+  const resume = useCallback((habitId: string) => run(() => resumeHabit(habitId), copy.toastResumed, "Resume habit"), [run, copy]);
+  /** Permanent: deletes the habit and every log. */
+  const deleteForever = useCallback((habitId: string) => {
+    if (!user) return Promise.resolve(false);
+    return run(() => deleteHabit(user.uid, habitId), copy.toastDeleted, "Delete habit");
+  }, [run, user, copy]);
+
+  /** Persist a manual order (optimistic: the list reorders immediately). */
+  const reorder = useCallback(async (ids: string[]) => {
+    setHabits((prev) => {
+      const byId = new Map(prev.map((h) => [h.id, h]));
+      const moved = ids.map((id, i) => ({ ...byId.get(id)!, order: i })).filter((h) => h.id);
+      const rest = prev.filter((h) => !ids.includes(h.id));
+      return [...moved, ...rest];
+    });
+    return run(() => reorderHabits(ids), null, "Reorder habits");
+  }, [run]);
+
+  return {
+    habits, archived, dateLogs, loading,
+    toggle, toggleSubtask, skip, logValue, addNote,
+    addHabit, editHabit, removeHabit, restore, pause, resume, deleteForever, reorder,
+  };
 }
 
 // ─── Shared Instance ──────────────────────────────────────────────────────────

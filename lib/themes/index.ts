@@ -1,6 +1,6 @@
 import type { ThemeDefinition } from "@/lib/themes/types";
 import { retro } from "@/lib/themes/retro";
-import { soft } from "@/lib/themes/soft";
+import { foundation } from "@/lib/themes/foundation";
 import { princess } from "@/lib/themes/princess";
 import { FONT_FILES } from "@/lib/themes/fonts";
 import { COLOR_VARS_KEY, hexToChannels } from "@/lib/themes/colors";
@@ -15,7 +15,7 @@ import { WALLPAPER_DEFAULTS, WALLPAPER_IMAGE_KEY, WALLPAPER_SETTINGS_KEY, wallpa
 
 export const THEMES = {
   retro,
-  soft,
+  foundation,
   princess,
 } satisfies Record<string, ThemeDefinition>;
 
@@ -28,6 +28,15 @@ export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === "string" && value in THEMES;
+}
+
+/** Renamed themes: old ids still stored in localStorage / cookies / Firestore. */
+const LEGACY_THEME_IDS: Record<string, ThemeId> = { soft: "foundation" };
+
+/** Validate a stored theme id, upgrading legacy ids. Null if unknown. */
+export function resolveThemeId(value: unknown): ThemeId | null {
+  if (isThemeId(value)) return value;
+  return typeof value === "string" && value in LEGACY_THEME_IDS ? LEGACY_THEME_IDS[value] : null;
 }
 
 export function getTheme(id: ThemeId): ThemeDefinition {
@@ -61,6 +70,7 @@ function buildOne(id: string, t: ThemeDefinition): string {
     "--th-text": c(t.colors.text),
     "--th-text-secondary": a(t.colors.text, t.opacity.textSecondary),
     "--th-btn-text": c(t.colors.btnText),
+    "--th-danger": c(t.colors.danger),
 
     // Generic fallbacks keep text styled even if a font variable is ever missing
     // (an undefined var() would otherwise invalidate the whole stack)
@@ -144,7 +154,7 @@ export function buildThemeInitScript(): string {
   const key = JSON.stringify(THEME_STORAGE_KEY);
   const d = WALLPAPER_DEFAULTS;
   return `(function(){var d=document.documentElement;
-try{var b=${JSON.stringify(bases)};if(document.cookie.indexOf(${key}+"=")===-1){var t=localStorage.getItem(${key});if(b[t]){d.setAttribute("data-theme",t);d.className=d.className.replace(/\\btheme-\\S+/g,"").trim()+" theme-"+b[t];document.cookie=${key}+"="+t+"; path=/; max-age=31536000; samesite=lax";}}}catch(e){}
+try{var b=${JSON.stringify(bases)};if(document.cookie.indexOf(${key}+"=")===-1){var t=localStorage.getItem(${key});t=${JSON.stringify(LEGACY_THEME_IDS)}[t]||t;if(b[t]){d.setAttribute("data-theme",t);d.className=d.className.replace(/\\btheme-\\S+/g,"").trim()+" theme-"+b[t];document.cookie=${key}+"="+t+"; path=/; max-age=31536000; samesite=lax";}}}catch(e){}
 try{var cv=JSON.parse(localStorage.getItem(${JSON.stringify(COLOR_VARS_KEY)})||"null");var mine=cv&&cv[d.getAttribute("data-theme")];if(mine)for(var k in mine)d.style.setProperty(k,mine[k]);}catch(e){}
 try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(WALLPAPER_SETTINGS_KEY)})||"null");if(s){var p=function(k,v){d.style.setProperty(k,String(v))};
 if(s.source==="none"){d.removeAttribute("data-wallpaper")}else if(s.source==="custom"){var im=localStorage.getItem(${JSON.stringify(WALLPAPER_IMAGE_KEY)});if(im){d.setAttribute("data-wallpaper","custom");p("--wallpaper-image",'url("'+im+'")')}}

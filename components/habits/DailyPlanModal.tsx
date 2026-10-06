@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { Habit, DailyPlan } from "@/types";
 import { HABIT_COLORS, cn } from "@/lib/utils";
-import { defaultPlanHabitIds, isEveryDayHabit, scheduleLabel } from "@/lib/habits";
+import { defaultPlanHabitIds, isEveryDayHabit } from "@/lib/habits";
+import { isHabitActive, scheduleLabel } from "@/lib/schedule";
+import { getTodayString } from "@/lib/utils";
 import { useTheme, useIcons } from "@/lib/theme-context";
 import ModalPortal from "@/components/layout/ModalPortal";
 import { useCopy } from "@/lib/copy";
@@ -16,8 +18,12 @@ interface Props {
   onSave: (habitIds: string[]) => Promise<boolean>;
 }
 
-export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: Props) {
-  const { isRetro } = useTheme();
+export default function DailyPlanModal({ open, onClose, habits: allHabits, plan, onSave }: Props) {
+  // Paused or out-of-range habits can't be planned today
+  const habits = allHabits.filter((h) => isHabitActive(h, getTodayString()));
+  const { isRetro, def } = useTheme();
+  // Themes can turn off per-habit emoji + color (e.g. Foundation). Data is untouched.
+  const showDecor = def.habitDecor !== false;
   const copy = useCopy();
   const Icons = useIcons();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -131,7 +137,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
                       )}>
                         <Icons.check className="w-4 h-4" strokeWidth={3} />
                       </div>
-                      <span className="text-lg" style={{ color: HABIT_COLORS[h.color].hex }}>{h.emoji}</span>
+                      {showDecor && <span className="text-lg" style={{ color: HABIT_COLORS[h.color].hex }}>{h.emoji}</span>}
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           "truncate font-theme",
@@ -156,7 +162,7 @@ export default function DailyPlanModal({ open, onClose, habits, plan, onSave }: 
               className={cn("w-full mt-6 py-4 transition-all duration-300 font-theme disabled:opacity-40",
                 isRetro
                   ? "bg-th-primary text-th-btn-text hover:bg-th-primary/90 disabled:bg-th-primary/20 disabled:text-th-primary font-800 uppercase tracking-[0.2em] shadow-[0_0_15px_rgb(var(--th-primary)/0.4)]"
-                  : "bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
+                  : "th-btn-primary bg-th-primary text-th-btn-text rounded-xl font-700 shadow-th-raised disabled:bg-th-surface-dark"
               )}>
               {saving ? copy.savingText : copy.planSaveButton}
             </button>

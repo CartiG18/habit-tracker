@@ -1,6 +1,7 @@
 import {
-  X, Check, ChevronRight, Plus, ClipboardList, Activity, TrendingUp, Target, Edit2, Archive,
-  Monitor, Bell, Settings, LogOut, ImagePlus, RotateCcw,
+  X, Check, ChevronRight, Plus, ClipboardList, Activity, TrendingUp, Target, Edit2, Archive, Trash2,
+  Monitor, Bell, Settings, LogOut, ImagePlus, RotateCcw, Coffee, Pause, Play, CalendarDays,
+  GripVertical, Sunrise, Sun, Moon, CalendarRange, Minus,
 } from "lucide-react";
 import type { ThemeIcons } from "@/lib/themes/types";
 
@@ -15,11 +16,23 @@ export const LUCIDE_ICONS: ThemeIcons = {
   rate: TrendingUp,
   best: Target,
   edit: Edit2,
-  delete: Archive,
+  delete: Trash2,
   appearance: Monitor,
   notifications: Bell,
   account: Settings,
   logout: LogOut,
   upload: ImagePlus,
   reset: RotateCcw,
+  skip: Coffee,
+  archive: Archive,
+  pause: Pause,
+  resume: Play,
+  history: CalendarDays,
+  grip: GripVertical,
+  morning: Sunrise,
+  afternoon: Sun,
+  evening: Moon,
+  calendar: CalendarRange,
+  increment: Plus,
+  decrement: Minus,
 };

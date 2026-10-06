@@ -29,7 +29,7 @@ export default function ColorSettings() {
 
   return (
     <div className="px-5 pb-5 relative z-10 space-y-3">
-      <p className="font-theme text-sm font-500 text-th-text-secondary">{copy.colorsLabel}</p>
+      <p className="th-label font-theme text-sm font-500 text-th-text-secondary">{copy.colorsLabel}</p>
 
       <div className="rounded-xl bg-th-screen/40 divide-y divide-th-surface-dark/30">
         {EDITABLE_COLORS.map((token) => {
